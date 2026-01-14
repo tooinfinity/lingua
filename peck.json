@@ -1,0 +1,14 @@
+{
+    "preset": "base",
+    "ignore": {
+        "words": [
+            "php",
+            "lingua",
+            "js",
+            "tsconfig",
+            "npm",
+            "tooinfinity"
+        ],
+        "paths": []
+    }
+}

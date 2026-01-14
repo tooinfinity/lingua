@@ -1,0 +1,63 @@
+{
+    "name": "tooinfinity/lingua",
+    "description": "Zero-config localization for Laravel 12 with Inertia.js and React",
+    "keywords": ["laravel", "localization", "i18n", "inertia", "react", "rtl"],
+    "license": "MIT",
+    "require": {
+        "php": "^8.4",
+        "laravel/framework": "^11.0|^12.0",
+        "inertiajs/inertia-laravel": "^2.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.27.0",
+        "peckphp/peck": "^0.1.3",
+        "pestphp/pest": "^3.8.4",
+        "pestphp/pest-plugin-type-coverage": "^3.6.1",
+        "phpstan/phpstan": "^1.12.32",
+        "rector/rector": "^1.2.10",
+        "symfony/var-dumper": "^7.4.3",
+        "orchestra/testbench": "^9.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "TooInfinity\\Lingua\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "TooInfinity\\Lingua\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "TooInfinity\\Lingua\\LinguaServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "scripts": {
+        "rector": "rector",
+        "lint": "pint",
+        "test:rector": "rector --dry-run",
+        "test:lint": "pint --test",
+        "test:typos": "peck",
+        "test:types": "phpstan analyse --ansi",
+        "test:unit": "pest --colors=always",
+        "test": [
+            "@test:rector",
+            "@test:lint",
+            "@test:typos",
+            "@test:types",
+            "@test:unit"
+        ]
+    }
+}
