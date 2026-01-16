@@ -5,18 +5,17 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "laravel/framework": "^11.47|^12.0",
-        "inertiajs/inertia-laravel": "^2.0.19"
+        "laravel/framework": "^11.47|^12.0"
     },
     "require-dev": {
         "laravel/pint": "^1.24.0",
-
         "pestphp/pest": "^4.1.0",
         "pestphp/pest-plugin-type-coverage": "^4.0.2",
         "phpstan/phpstan": "^2.1.26",
         "rector/rector": "^2.1.7",
         "symfony/var-dumper": "^7.3.3",
-        "orchestra/testbench": "^9.16"
+        "orchestra/testbench": "^9.16",
+        "inertiajs/inertia-laravel": "^2.0.19"
     },
     "autoload": {
         "psr-4": {
