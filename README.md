@@ -97,6 +97,16 @@ return [
 
     // Default locale (null = use config('app.locale'))
     'default' => null,
+
+    // Route configuration
+    'routes' => [
+        'enabled' => true,      // Set to false to disable package routes
+        'prefix' => '',         // Route prefix (e.g., 'api' or 'admin')
+        'middleware' => ['web'], // Middleware to apply to routes
+    ],
+
+    // Controller override (null = use default package controller)
+    'controller' => null,
 ];
 ```
 
@@ -107,6 +117,80 @@ return [
 | `session_key` | string | The session key used to store the user's locale |
 | `locales` | array | List of supported locale codes |
 | `default` | string\|null | Default locale. If `null`, uses Laravel's `app.locale` |
+| `routes` | array | Route configuration options (see below) |
+| `controller` | string\|null | Custom controller class. If `null`, uses the default package controller |
+
+### Route Configuration
+
+You can customize how the package routes are registered using the `routes` configuration array:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | bool | `true` | Whether to register package routes |
+| `prefix` | string | `''` | Route prefix (e.g., `'api'` makes route `/api/lingua/locale`) |
+| `middleware` | array | `['web']` | Middleware to apply to routes |
+
+**Disable package routes** (to define your own):
+
+```php
+'routes' => [
+    'enabled' => false,
+],
+```
+
+**Add route prefix:**
+
+```php
+'routes' => [
+    'enabled' => true,
+    'prefix' => 'api',  // Route becomes POST /api/lingua/locale
+    'middleware' => ['web'],
+],
+```
+
+**Custom middleware:**
+
+```php
+'routes' => [
+    'enabled' => true,
+    'prefix' => '',
+    'middleware' => ['web', 'auth'],  // Require authentication
+],
+```
+
+### Custom Controller
+
+You can override the default locale controller by specifying your own controller class:
+
+```php
+'controller' => \App\Http\Controllers\LocaleController::class,
+```
+
+Your custom controller should handle the locale change. Here's an example:
+
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use TooInfinity\Lingua\Lingua;
+
+class LocaleController
+{
+    public function __invoke(Request $request, Lingua $lingua)
+    {
+        $validated = $request->validate([
+            'locale' => ['required', 'string', Rule::in($lingua->supportedLocales())],
+        ]);
+
+        $lingua->setLocale($validated['locale']);
+
+        return redirect()->route('dashboard'); // Custom redirect
+    }
+}
+```
 
 ## Usage
 
@@ -180,13 +264,13 @@ Import and use the `useTranslations` hook in your React components:
 import { useTranslations } from 'lingua/resources/js';
 
 function Welcome() {
-    const { t, locale, locales } = useTranslations();
+    const { __, locale, locales } = useTranslations();
 
     return (
         <div>
-            <h1>{t('messages.welcome')}</h1>
-            <p>{t('messages.greeting', { name: 'John' })}</p>
-            <p>{t('messages.items_count', { count: 5 })}</p>
+            <h1>{__('messages.welcome')}</h1>
+            <p>{__('messages.greeting', { name: 'John' })}</p>
+            <p>{__('messages.items_count', { count: 5 })}</p>
             <p>Current locale: {locale}</p>
         </div>
     );
@@ -254,22 +338,22 @@ Returns an object with the following properties:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `t` | `(key: string, replacements?: Record<string, string \| number>) => string` | Translation function |
+| `__` | `(key: string, replacements?: Record<string, string \| number>) => string` | Translation function |
 | `locale` | `string` | Current locale |
 | `locales` | `string[]` | List of supported locales |
 
-#### Translation Function `t()`
-
+#### Translation Function `__()`
+ 
 ```tsx
 // Simple translation
-t('messages.welcome')  // "Welcome to our application!"
+__('messages.welcome')  // "Welcome to our application!"
 
 // With replacements (Laravel-style :placeholder)
-t('messages.greeting', { name: 'John' })  // "Hello, John!"
-t('messages.items_count', { count: 5 })   // "You have 5 items."
+__('messages.greeting', { name: 'John' })  // "Hello, John!"
+__('messages.items_count', { count: 5 })   // "You have 5 items."
 
 // Returns the key if translation not found
-t('messages.nonexistent')  // "messages.nonexistent"
+__('messages.nonexistent')  // "messages.nonexistent"
 ```
 
 ### Inertia Shared Props

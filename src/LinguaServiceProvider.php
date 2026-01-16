@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TooInfinity\Lingua;
 
 use Illuminate\Foundation\AliasLoader;
+use Illuminate\Foundation\Application;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use TooInfinity\Lingua\Console\InstallCommand;
@@ -17,7 +18,7 @@ final class LinguaServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/lingua.php', 'lingua');
 
-        $this->app->singleton(Lingua::class, fn ($app): Lingua => new Lingua($app));
+        $this->app->singleton(Lingua::class, fn (Application $app): Lingua => new Lingua($app));
 
         // Register facade alias
         $loader = AliasLoader::getInstance();
@@ -30,7 +31,10 @@ final class LinguaServiceProvider extends ServiceProvider
             __DIR__.'/../config/lingua.php' => config_path('lingua.php'),
         ], 'lingua-config');
 
-        $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        // Only load routes if enabled in config
+        if (config('lingua.routes.enabled', true)) {
+            $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        }
 
         /** @var Router $router */
         $router = $this->app->make(Router::class);

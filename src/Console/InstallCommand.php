@@ -77,7 +77,7 @@ final class InstallCommand extends Command
 
         $packageManager = $this->detectPackageManager();
 
-        info("Using {$packageManager} to install @tooinfinity/lingua-react...");
+        info(sprintf('Using %s to install @tooinfinity/lingua-react...', $packageManager));
 
         $command = $this->buildInstallCommand($packageManager);
 
@@ -130,10 +130,10 @@ final class InstallCommand extends Command
         $package = '@tooinfinity/lingua-react';
 
         return match ($packageManager) {
-            'bun' => "bun add {$package}",
-            'pnpm' => "pnpm add {$package}",
-            'yarn' => "yarn add {$package}",
-            default => "npm install {$package}",
+            'bun' => 'bun add '.$package,
+            'pnpm' => 'pnpm add '.$package,
+            'yarn' => 'yarn add '.$package,
+            default => 'npm install '.$package,
         };
     }
 }

@@ -22,7 +22,9 @@ final class LinguaLocaleController extends Controller
             'locale' => ['required', 'string', Rule::in($this->lingua->supportedLocales())],
         ]);
 
-        $this->lingua->setLocale($validated['locale']);
+        /** @var string $locale */
+        $locale = $validated['locale'];
+        $this->lingua->setLocale($locale);
 
         return redirect()->back();
     }

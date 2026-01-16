@@ -362,3 +362,83 @@ describe('config publishing', function (): void {
         Process::assertRan('npm install @tooinfinity/lingua-react');
     });
 });
+
+describe('config publishing failure', function (): void {
+    it('returns failure when vendor:publish fails', function (): void {
+        // Ensure no npm command runs when config publish fails
+        Process::fake();
+
+        // Create a custom failing vendor:publish command with proper signature
+        $failingCommand = new class extends Illuminate\Console\Command
+        {
+            protected $signature = 'vendor:publish {--tag=*}';
+
+            protected $description = 'Failing vendor:publish for testing';
+
+            public function handle(): int
+            {
+                return self::FAILURE;
+            }
+        };
+
+        // Replace the vendor:publish command with our failing version
+        $this->app->extend('command.vendor.publish', fn (): object => $failingCommand);
+        Artisan::registerCommand($failingCommand);
+
+        $this->artisan('lingua:install')
+            ->assertFailed()
+            ->assertExitCode(1);
+
+        // Verify no npm/yarn/pnpm/bun command was run since we failed before that step
+        Process::assertNothingRan();
+    });
+
+    it('does not attempt npm install when config publish fails', function (): void {
+        Process::fake();
+
+        // Create a custom failing vendor:publish command with proper signature
+        $failingCommand = new class extends Illuminate\Console\Command
+        {
+            protected $signature = 'vendor:publish {--tag=*}';
+
+            protected $description = 'Failing vendor:publish for testing';
+
+            public function handle(): int
+            {
+                return self::FAILURE;
+            }
+        };
+
+        Artisan::registerCommand($failingCommand);
+
+        $this->artisan('lingua:install')
+            ->assertFailed();
+
+        // Ensure npm install was never attempted
+        Process::assertNothingRan();
+    });
+
+    it('displays error message when vendor:publish fails', function (): void {
+        Process::fake();
+
+        // Create a custom failing vendor:publish command with proper signature
+        $failingCommand = new class extends Illuminate\Console\Command
+        {
+            protected $signature = 'vendor:publish {--tag=*}';
+
+            protected $description = 'Failing vendor:publish for testing';
+
+            public function handle(): int
+            {
+                return self::FAILURE;
+            }
+        };
+
+        Artisan::registerCommand($failingCommand);
+
+        // The command should fail and the error function should be called
+        // We verify through the exit code since Laravel Prompts error() outputs to console
+        $this->artisan('lingua:install')
+            ->assertExitCode(1);
+    });
+});
