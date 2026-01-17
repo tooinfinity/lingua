@@ -36,14 +36,31 @@ final class LinguaServiceProvider extends ServiceProvider
             $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         }
 
-        /** @var Router $router */
-        $router = $this->app->make(Router::class);
-        $router->aliasMiddleware('lingua', LinguaMiddleware::class);
+        $this->registerMiddleware();
 
         if ($this->app->runningInConsole()) {
             $this->commands([
                 InstallCommand::class,
             ]);
+        }
+    }
+
+    /**
+     * Register the middleware alias and optionally auto-register to a middleware group.
+     */
+    private function registerMiddleware(): void
+    {
+        /** @var Router $router */
+        $router = $this->app->make(Router::class);
+
+        // Always register the middleware alias for manual usage
+        $router->aliasMiddleware('lingua', LinguaMiddleware::class);
+
+        // Auto-register middleware to the specified group if enabled
+        if (config('lingua.middleware.auto_register', true)) {
+            /** @var string $group */
+            $group = config('lingua.middleware.group', 'web');
+            $router->pushMiddlewareToGroup($group, LinguaMiddleware::class);
         }
     }
 }
