@@ -21,12 +21,12 @@ final readonly class LinguaMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $locale = $this->lingua->getLocale();
+        $locale = $this->lingua->getLocale($request);
 
         app()->setLocale($locale);
 
         Inertia::share('lingua', fn (): array => [
-            'locale' => $this->lingua->getLocale(),
+            'locale' => $this->lingua->getLocale($request),
             'locales' => $this->lingua->supportedLocales(),
             'translations' => $this->lingua->translations(),
         ]);

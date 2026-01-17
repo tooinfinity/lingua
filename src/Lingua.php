@@ -7,8 +7,10 @@ namespace TooInfinity\Lingua;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use TooInfinity\Lingua\Exceptions\UnsupportedLocaleException;
+use TooInfinity\Lingua\Support\LocaleResolverManager;
 
 final readonly class Lingua
 {
@@ -16,24 +18,33 @@ final readonly class Lingua
         private Application $app
     ) {}
 
-    public function getLocale(): string
+    /**
+     * Get the current locale.
+     *
+     * When called without a request, falls back to session-based resolution
+     * for backward compatibility.
+     */
+    public function getLocale(?Request $request = null): string
     {
         /** @var ConfigRepository $config */
         $config = $this->app->make(ConfigRepository::class);
 
-        /** @var Session $session */
-        $session = $this->app->make(Session::class);
-
-        /** @var string $sessionKey */
-        $sessionKey = $config->get('lingua.session_key', 'lingua.locale');
-
         /** @var string $default */
         $default = $config->get('lingua.default') ?? $config->get('app.locale', 'en');
 
-        /** @var string $locale */
-        $locale = $session->get($sessionKey, $default);
+        // If a request is provided, use the resolver manager
+        if ($request instanceof Request) {
+            $resolvedLocale = $this->resolveLocaleFromRequest($request);
 
-        return $locale;
+            if ($resolvedLocale !== null) {
+                return $resolvedLocale;
+            }
+
+            return $this->normalizeLocale($default);
+        }
+
+        // Backward compatibility: session-only resolution when no request provided
+        return $this->getLocaleFromSession($default);
     }
 
     public function setLocale(string $locale): void
@@ -159,5 +170,64 @@ final readonly class Lingua
         }
 
         return $translations;
+    }
+
+    /**
+     * Resolve locale from request using the configured resolution order.
+     */
+    private function resolveLocaleFromRequest(Request $request): ?string
+    {
+        /** @var LocaleResolverManager $manager */
+        $manager = $this->app->make(LocaleResolverManager::class);
+
+        return $manager->resolve(
+            $request,
+            $this->isLocaleSupported(...),
+            $this->normalizeLocale(...)
+        );
+    }
+
+    /**
+     * Get locale from session (backward compatibility method).
+     */
+    private function getLocaleFromSession(string $default): string
+    {
+        /** @var ConfigRepository $config */
+        $config = $this->app->make(ConfigRepository::class);
+
+        /** @var Session $session */
+        $session = $this->app->make(Session::class);
+
+        /** @var string $sessionKey */
+        $sessionKey = $this->getSessionKey($config);
+
+        /** @var string $locale */
+        $locale = $session->get($sessionKey, $default);
+
+        return $locale;
+    }
+
+    /**
+     * Get the session key for storing locale.
+     *
+     * Checks legacy config first for backward compatibility, then falls back to new resolver config.
+     */
+    private function getSessionKey(ConfigRepository $config): string
+    {
+        // Check if legacy session_key has been customized (different from default)
+        /** @var string $legacyKey */
+        $legacyKey = $config->get('lingua.session_key', 'lingua.locale');
+
+        // Check the new resolver config
+        /** @var string|null $resolverKey */
+        $resolverKey = $config->get('lingua.resolvers.session.key');
+
+        // If legacy key was customized and resolver key is still at default, use legacy
+        if ($legacyKey !== 'lingua.locale' && $resolverKey === 'lingua.locale') {
+            return $legacyKey;
+        }
+
+        // Otherwise use resolver config (with fallback to legacy for full backward compat)
+        return $resolverKey ?? $legacyKey;
     }
 }
