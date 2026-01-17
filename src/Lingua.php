@@ -142,9 +142,30 @@ final readonly class Lingua
     }
 
     /**
+     * Get translations for the current locale based on the configured driver.
+     *
      * @return array<string, mixed>
      */
     public function translations(): array
+    {
+        /** @var ConfigRepository $config */
+        $config = $this->app->make(ConfigRepository::class);
+
+        /** @var string $driver */
+        $driver = $config->get('lingua.translation_driver', 'php');
+
+        return match ($driver) {
+            'json' => $this->loadJsonTranslations(),
+            default => $this->loadPhpTranslations(),
+        };
+    }
+
+    /**
+     * Load translations from PHP files in lang/{locale}/*.php.
+     *
+     * @return array<string, mixed>
+     */
+    private function loadPhpTranslations(): array
     {
         $locale = $this->getLocale();
         $path = $this->app->langPath($locale);
@@ -170,6 +191,32 @@ final readonly class Lingua
         }
 
         return $translations;
+    }
+
+    /**
+     * Load translations from JSON file at lang/{locale}.json.
+     *
+     * @return array<string, mixed>
+     */
+    private function loadJsonTranslations(): array
+    {
+        $locale = $this->getLocale();
+        $path = $this->app->langPath($locale.'.json');
+
+        if (! File::exists($path)) {
+            return [];
+        }
+
+        $content = File::get($path);
+
+        /** @var array<string, mixed>|null $decoded */
+        $decoded = json_decode($content, true);
+
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        return $decoded;
     }
 
     /**

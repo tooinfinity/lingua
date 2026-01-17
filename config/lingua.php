@@ -123,4 +123,16 @@ return [
     |
     */
     'controller' => null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Translation Driver
+    |--------------------------------------------------------------------------
+    |
+    | The driver to use for loading translations. Supported drivers: 'php', 'json'.
+    | - 'php': Loads translations from PHP files in lang/{locale}/*.php
+    | - 'json': Loads translations from JSON file at lang/{locale}.json
+    |
+    */
+    'translation_driver' => 'php',
 ];

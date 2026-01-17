@@ -282,4 +282,104 @@ describe('translations', function (): void {
         // Cleanup
         File::deleteDirectory(lang_path());
     });
+
+    it('loads json translations when driver is set to json', function (): void {
+        config(['lingua.translation_driver' => 'json']);
+
+        $langPath = lang_path();
+        File::ensureDirectoryExists($langPath);
+        File::put($langPath.'/en.json', json_encode([
+            'Welcome' => 'Welcome!',
+            'Hello' => 'Hello, World!',
+        ]));
+
+        $translations = $this->lingua->translations();
+
+        expect($translations)
+            ->toHaveKey('Welcome')
+            ->toHaveKey('Hello')
+            ->and($translations['Welcome'])->toBe('Welcome!')
+            ->and($translations['Hello'])->toBe('Hello, World!');
+
+        // Cleanup
+        File::deleteDirectory(lang_path());
+    });
+
+    it('returns empty array when json file does not exist', function (): void {
+        config(['lingua.translation_driver' => 'json']);
+
+        $translations = $this->lingua->translations();
+
+        expect($translations)->toBe([]);
+    });
+
+    it('loads json translations for the current locale', function (): void {
+        config(['lingua.translation_driver' => 'json']);
+
+        $langPath = lang_path();
+        File::ensureDirectoryExists($langPath);
+        File::put($langPath.'/fr.json', json_encode([
+            'Welcome' => 'Bienvenue!',
+            'Goodbye' => 'Au revoir!',
+        ]));
+
+        // Set locale to French
+        $this->lingua->setLocale('fr');
+
+        $translations = $this->lingua->translations();
+
+        expect($translations['Welcome'])->toBe('Bienvenue!')
+            ->and($translations['Goodbye'])->toBe('Au revoir!');
+
+        // Cleanup
+        File::deleteDirectory(lang_path());
+    });
+
+    it('returns empty array for invalid json content', function (): void {
+        config(['lingua.translation_driver' => 'json']);
+
+        $langPath = lang_path();
+        File::ensureDirectoryExists($langPath);
+        File::put($langPath.'/en.json', 'invalid json content');
+
+        $translations = $this->lingua->translations();
+
+        expect($translations)->toBe([]);
+
+        // Cleanup
+        File::deleteDirectory(lang_path());
+    });
+
+    it('defaults to php driver when translation_driver is not set', function (): void {
+        // Ensure the config key doesn't exist
+        config(['lingua.translation_driver' => null]);
+
+        $langPath = lang_path('en');
+        File::ensureDirectoryExists($langPath);
+        File::put($langPath.'/messages.php', '<?php return ["test" => "PHP Driver Works"];');
+
+        $translations = $this->lingua->translations();
+
+        expect($translations)->toHaveKey('messages')
+            ->and($translations['messages']['test'])->toBe('PHP Driver Works');
+
+        // Cleanup
+        File::deleteDirectory(lang_path());
+    });
+
+    it('uses php driver for unknown driver values', function (): void {
+        config(['lingua.translation_driver' => 'unknown']);
+
+        $langPath = lang_path('en');
+        File::ensureDirectoryExists($langPath);
+        File::put($langPath.'/messages.php', '<?php return ["test" => "Fallback Works"];');
+
+        $translations = $this->lingua->translations();
+
+        expect($translations)->toHaveKey('messages')
+            ->and($translations['messages']['test'])->toBe('Fallback Works');
+
+        // Cleanup
+        File::deleteDirectory(lang_path());
+    });
 });
