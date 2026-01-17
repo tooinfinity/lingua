@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
+use TooInfinity\Lingua\Exceptions\UnsupportedLocaleException;
 use TooInfinity\Lingua\Lingua;
 
 beforeEach(function (): void {
@@ -44,12 +45,16 @@ describe('getLocale', function (): void {
 
 describe('setLocale', function (): void {
     it('stores locale in session', function (): void {
+        config(['lingua.locales' => ['en', 'fr', 'de']]);
+
         $this->lingua->setLocale('fr');
 
         expect(session()->get('lingua.locale'))->toBe('fr');
     });
 
     it('sets app locale', function (): void {
+        config(['lingua.locales' => ['en', 'fr', 'de']]);
+
         $this->lingua->setLocale('de');
 
         expect(app()->getLocale())->toBe('de');
@@ -57,10 +62,132 @@ describe('setLocale', function (): void {
 
     it('uses custom session key from config', function (): void {
         config(['lingua.session_key' => 'my.custom.key']);
+        config(['lingua.locales' => ['en', 'it']]);
 
         $this->lingua->setLocale('it');
 
         expect(session()->get('my.custom.key'))->toBe('it');
+    });
+
+    it('throws exception for unsupported locale', function (): void {
+        config(['lingua.locales' => ['en', 'fr']]);
+
+        $this->lingua->setLocale('invalid');
+    })->throws(UnsupportedLocaleException::class, 'Locale "invalid" is not supported');
+
+    it('normalizes locale before storing', function (): void {
+        config(['lingua.locales' => ['en_US', 'fr']]);
+
+        $this->lingua->setLocale('en-us');
+
+        expect(session()->get('lingua.locale'))->toBe('en_US');
+        expect(app()->getLocale())->toBe('en_US');
+    });
+
+    it('normalizes hyphenated locale to underscore format', function (): void {
+        config(['lingua.locales' => ['pt_BR']]);
+
+        $this->lingua->setLocale('pt-BR');
+
+        expect(session()->get('lingua.locale'))->toBe('pt_BR');
+    });
+
+    it('normalizes case for locale with region', function (): void {
+        config(['lingua.locales' => ['en_US']]);
+
+        $this->lingua->setLocale('EN-US');
+
+        expect(session()->get('lingua.locale'))->toBe('en_US');
+    });
+
+    it('trims whitespace from locale', function (): void {
+        config(['lingua.locales' => ['fr']]);
+
+        $this->lingua->setLocale('  fr  ');
+
+        expect(session()->get('lingua.locale'))->toBe('fr');
+    });
+});
+
+describe('normalizeLocale', function (): void {
+    it('converts hyphens to underscores', function (): void {
+        expect($this->lingua->normalizeLocale('en-US'))->toBe('en_US');
+    });
+
+    it('lowercases simple locale', function (): void {
+        expect($this->lingua->normalizeLocale('FR'))->toBe('fr');
+    });
+
+    it('normalizes case for locale with region', function (): void {
+        expect($this->lingua->normalizeLocale('EN-us'))->toBe('en_US');
+        expect($this->lingua->normalizeLocale('pt-br'))->toBe('pt_BR');
+    });
+
+    it('trims whitespace', function (): void {
+        expect($this->lingua->normalizeLocale('  en  '))->toBe('en');
+    });
+
+    it('handles already normalized locale', function (): void {
+        expect($this->lingua->normalizeLocale('en_US'))->toBe('en_US');
+        expect($this->lingua->normalizeLocale('fr'))->toBe('fr');
+    });
+});
+
+describe('validateLocale', function (): void {
+    it('passes for supported locale', function (): void {
+        config(['lingua.locales' => ['en', 'fr', 'de']]);
+
+        $this->lingua->validateLocale('fr');
+
+        expect(true)->toBeTrue(); // No exception thrown
+    });
+
+    it('throws exception for unsupported locale', function (): void {
+        config(['lingua.locales' => ['en', 'fr']]);
+
+        $this->lingua->validateLocale('invalid');
+    })->throws(UnsupportedLocaleException::class);
+
+    it('includes supported locales in error message', function (): void {
+        config(['lingua.locales' => ['en', 'fr']]);
+
+        try {
+            $this->lingua->validateLocale('de');
+        } catch (UnsupportedLocaleException $unsupportedLocaleException) {
+            expect($unsupportedLocaleException->getMessage())->toContain('en, fr');
+            expect($unsupportedLocaleException->getLocale())->toBe('de');
+            expect($unsupportedLocaleException->getSupportedLocales())->toBe(['en', 'fr']);
+        }
+    });
+
+    it('matches normalized versions of supported locales', function (): void {
+        config(['lingua.locales' => ['en-US', 'pt-BR']]);
+
+        // Should not throw - normalized versions should match
+        $this->lingua->validateLocale('en_US');
+
+        expect(true)->toBeTrue();
+    });
+});
+
+describe('isLocaleSupported', function (): void {
+    it('returns true for supported locale', function (): void {
+        config(['lingua.locales' => ['en', 'fr', 'de']]);
+
+        expect($this->lingua->isLocaleSupported('fr'))->toBeTrue();
+    });
+
+    it('returns false for unsupported locale', function (): void {
+        config(['lingua.locales' => ['en', 'fr']]);
+
+        expect($this->lingua->isLocaleSupported('invalid'))->toBeFalse();
+    });
+
+    it('handles locale variations', function (): void {
+        config(['lingua.locales' => ['en_US']]);
+
+        expect($this->lingua->isLocaleSupported('en-US'))->toBeTrue();
+        expect($this->lingua->isLocaleSupported('EN-us'))->toBeTrue();
     });
 });
 
