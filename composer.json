@@ -14,7 +14,7 @@
         "phpstan/phpstan": "^2.1.26",
         "rector/rector": "^2.1.7",
         "symfony/var-dumper": "^7.3.3",
-        "orchestra/testbench": "^9.16",
+        "orchestra/testbench": "^9.16|^10.9.0",
         "inertiajs/inertia-laravel": "^2.0.19"
     },
     "autoload": {
