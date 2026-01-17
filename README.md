@@ -8,6 +8,8 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/tooinfinity/lingua)](https://packagist.org/packages/tooinfinity/lingua)
 [![License](https://img.shields.io/packagist/l/tooinfinity/lingua)](LICENSE)
 
+> ⚠️ **Under Development**: This package is currently under active development and is not ready for production use. The API may change without notice.
+
 A minimal Laravel localization package for Inertia.js and React applications. Share your Laravel translations with your React frontend seamlessly.
 
 ## Features
