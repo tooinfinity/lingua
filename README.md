@@ -6,7 +6,7 @@
 [![Laravel Version](https://img.shields.io/badge/Laravel-11.x%20%7C%2012.x-red.svg)](https://laravel.com)
 [![Latest Stable Version](https://img.shields.io/packagist/v/tooinfinity/lingua)](https://packagist.org/packages/tooinfinity/lingua)
 [![Total Downloads](https://img.shields.io/packagist/dt/tooinfinity/lingua)](https://packagist.org/packages/tooinfinity/lingua)
-[![License](https://img.shields.io/packagist/l/tooinfinity/lingua)](LICENSE)
+[![License](https://img.shields.io/packagist/l/tooinfinity/lingua)](LICENSE.md)
 
 > ⚠️ **Under Development**: This package is currently under active development and is not ready for production use. The API may change without notice.
 
