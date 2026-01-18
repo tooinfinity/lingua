@@ -115,7 +115,7 @@ final readonly class LocalizedUrlGenerator
 
         /** @var array{scheme?: string, host?: string, port?: int, user?: string, pass?: string, path?: string, query?: string, fragment?: string} $parsed */
         $path = $parsed['path'] ?? '/';
-        $segments = array_values(array_filter(explode('/', $path), fn ($s): bool => $s !== ''));
+        $segments = array_values(array_filter(explode('/', $path), fn (string $s): bool => $s !== ''));
 
         /** @var int $segmentPosition */
         $segmentPosition = $this->config->get('lingua.url.prefix.segment', 1);

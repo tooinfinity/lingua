@@ -170,4 +170,147 @@ describe('LocalizedUrlGenerator', function (): void {
             expect($url)->toBe('https://fr.example.com/dashboard');
         });
     });
+
+    describe('localizedRoute', function (): void {
+        beforeEach(function (): void {
+            config([
+                'lingua.url.strategy' => 'prefix',
+                'lingua.url.prefix.segment' => 1,
+                'lingua.locales' => ['en', 'fr', 'de'],
+            ]);
+            $this->generator = app(LocalizedUrlGenerator::class);
+        });
+
+        it('generates route URL with locale parameter for prefix strategy', function (): void {
+            $routeName = 'urlgen.dashboard.'.uniqid();
+            Illuminate\Support\Facades\Route::get('/{locale}/dashboard', fn (): string => 'dashboard')->name($routeName);
+            Illuminate\Support\Facades\Route::getRoutes()->refreshNameLookups();
+
+            $url = $this->generator->localizedRoute($routeName, [], 'fr');
+
+            expect($url)->toContain('/fr/dashboard');
+        });
+
+        it('generates route URL with domain strategy', function (): void {
+            config([
+                'lingua.url.strategy' => 'domain',
+                'lingua.url.domain.hosts' => [
+                    'en' => 'example.com',
+                    'fr' => 'fr.example.com',
+                ],
+            ]);
+            $generator = app(LocalizedUrlGenerator::class);
+
+            $routeName = 'urlgen.settings.'.uniqid();
+            Illuminate\Support\Facades\Route::get('/settings', fn (): string => 'settings')->name($routeName);
+            Illuminate\Support\Facades\Route::getRoutes()->refreshNameLookups();
+
+            $url = $generator->localizedRoute($routeName, [], 'fr');
+
+            expect($url)->toContain('fr.example.com');
+        });
+
+        it('uses current locale when locale is null', function (): void {
+            config(['lingua.locales' => ['en', 'fr']]);
+            app(TooInfinity\Lingua\Lingua::class)->setLocale('fr');
+            $generator = app(LocalizedUrlGenerator::class);
+
+            $routeName = 'urlgen.account.'.uniqid();
+            Illuminate\Support\Facades\Route::get('/{locale}/account', fn (): string => 'account')->name($routeName);
+            Illuminate\Support\Facades\Route::getRoutes()->refreshNameLookups();
+
+            $url = $generator->localizedRoute($routeName);
+
+            expect($url)->toContain('/fr/account');
+        });
+
+        it('passes additional parameters to route', function (): void {
+            $routeName = 'urlgen.posts.show.'.uniqid();
+            Illuminate\Support\Facades\Route::get('/{locale}/posts/{post}', fn (): string => 'post')->name($routeName);
+            Illuminate\Support\Facades\Route::getRoutes()->refreshNameLookups();
+
+            $url = $this->generator->localizedRoute($routeName, ['post' => 42], 'de');
+
+            expect($url)->toContain('/de/posts/42');
+        });
+
+        it('generates relative URL when absolute is false', function (): void {
+            $routeName = 'urlgen.contact.'.uniqid();
+            Illuminate\Support\Facades\Route::get('/{locale}/contact', fn (): string => 'contact')->name($routeName);
+            Illuminate\Support\Facades\Route::getRoutes()->refreshNameLookups();
+
+            $url = $this->generator->localizedRoute($routeName, [], 'fr', false);
+
+            expect($url)->toBe('/fr/contact');
+        });
+
+        it('generates absolute URL by default', function (): void {
+            $routeName = 'urlgen.about.'.uniqid();
+            Illuminate\Support\Facades\Route::get('/{locale}/about', fn (): string => 'about')->name($routeName);
+            Illuminate\Support\Facades\Route::getRoutes()->refreshNameLookups();
+
+            $url = $this->generator->localizedRoute($routeName, [], 'fr');
+
+            expect($url)->toStartWith('http');
+        });
+    });
+
+    describe('edge cases', function (): void {
+        it('returns original URL unchanged when prefix strategy receives malformed URL', function (): void {
+            config([
+                'lingua.url.strategy' => 'prefix',
+                'lingua.url.prefix.segment' => 1,
+            ]);
+            $generator = app(LocalizedUrlGenerator::class);
+
+            // URLs that cause parse_url to return false
+            $malformedUrl = 'http:///example.com';
+
+            $url = $generator->localizedUrl($malformedUrl, 'fr');
+
+            expect($url)->toBe($malformedUrl);
+        });
+
+        it('returns original URL unchanged when domain strategy receives malformed URL', function (): void {
+            config([
+                'lingua.url.strategy' => 'domain',
+                'lingua.url.domain.hosts' => [
+                    'en' => 'example.com',
+                    'fr' => 'fr.example.com',
+                ],
+            ]);
+            $generator = app(LocalizedUrlGenerator::class);
+
+            // URLs that cause parse_url to return false
+            $malformedUrl = 'http:///example.com';
+
+            $url = $generator->localizedUrl($malformedUrl, 'fr');
+
+            expect($url)->toBe($malformedUrl);
+        });
+
+        it('handles URL with user info in prefix strategy', function (): void {
+            config([
+                'lingua.url.strategy' => 'prefix',
+                'lingua.url.prefix.segment' => 1,
+            ]);
+            $generator = app(LocalizedUrlGenerator::class);
+
+            $url = $generator->localizedUrl('https://user@example.com/dashboard', 'fr');
+
+            expect($url)->toBe('https://user@example.com/fr/dashboard');
+        });
+
+        it('handles URL with user and password in prefix strategy', function (): void {
+            config([
+                'lingua.url.strategy' => 'prefix',
+                'lingua.url.prefix.segment' => 1,
+            ]);
+            $generator = app(LocalizedUrlGenerator::class);
+
+            $url = $generator->localizedUrl('https://user:password@example.com/dashboard', 'fr');
+
+            expect($url)->toBe('https://user:password@example.com/fr/dashboard');
+        });
+    });
 });

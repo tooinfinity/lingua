@@ -383,3 +383,190 @@ describe('translations', function (): void {
         File::deleteDirectory(lang_path());
     });
 });
+
+describe('getDirection', function (): void {
+    it('returns rtl for Arabic locale', function (): void {
+        config(['lingua.locales' => ['en', 'ar']]);
+        $this->lingua->setLocale('ar');
+
+        expect($this->lingua->getDirection())->toBe('rtl');
+    });
+
+    it('returns ltr for English locale', function (): void {
+        config(['lingua.locales' => ['en', 'ar']]);
+        $this->lingua->setLocale('en');
+
+        expect($this->lingua->getDirection())->toBe('ltr');
+    });
+
+    it('returns rtl for specified RTL locale parameter', function (): void {
+        expect($this->lingua->getDirection('ar'))->toBe('rtl');
+        expect($this->lingua->getDirection('he'))->toBe('rtl');
+        expect($this->lingua->getDirection('fa'))->toBe('rtl');
+    });
+
+    it('returns ltr for specified LTR locale parameter', function (): void {
+        expect($this->lingua->getDirection('en'))->toBe('ltr');
+        expect($this->lingua->getDirection('fr'))->toBe('ltr');
+        expect($this->lingua->getDirection('de'))->toBe('ltr');
+    });
+
+    it('returns rtl for locale with region code when base is RTL', function (): void {
+        expect($this->lingua->getDirection('ar_SA'))->toBe('rtl');
+        expect($this->lingua->getDirection('he_IL'))->toBe('rtl');
+    });
+
+    it('returns ltr for locale with region code when base is LTR', function (): void {
+        expect($this->lingua->getDirection('en_US'))->toBe('ltr');
+        expect($this->lingua->getDirection('pt_BR'))->toBe('ltr');
+    });
+});
+
+describe('localizedUrl', function (): void {
+    it('generates localized URL with prefix strategy', function (): void {
+        config([
+            'lingua.url.strategy' => 'prefix',
+            'lingua.url.prefix.segment' => 1,
+        ]);
+
+        $url = $this->lingua->localizedUrl('/dashboard', 'fr');
+
+        expect($url)->toBe('/fr/dashboard');
+    });
+
+    it('generates localized URL with domain strategy', function (): void {
+        config([
+            'lingua.url.strategy' => 'domain',
+            'lingua.url.domain.hosts' => [
+                'en' => 'example.com',
+                'fr' => 'fr.example.com',
+            ],
+        ]);
+
+        $url = $this->lingua->localizedUrl('https://example.com/dashboard', 'fr');
+
+        expect($url)->toBe('https://fr.example.com/dashboard');
+    });
+
+    it('uses current locale when locale parameter is null', function (): void {
+        config([
+            'lingua.url.strategy' => 'prefix',
+            'lingua.url.prefix.segment' => 1,
+            'lingua.locales' => ['en', 'fr'],
+        ]);
+        $this->lingua->setLocale('fr');
+
+        $url = $this->lingua->localizedUrl('/dashboard');
+
+        expect($url)->toBe('/fr/dashboard');
+    });
+});
+
+describe('localizedRoute', function (): void {
+    it('generates localized route URL with prefix strategy', function (): void {
+        config([
+            'lingua.url.strategy' => 'prefix',
+            'lingua.url.prefix.segment' => 1,
+        ]);
+
+        $routeName = 'lingua.dashboard.'.uniqid();
+        Illuminate\Support\Facades\Route::get('/{locale}/dashboard', fn (): string => 'dashboard')->name($routeName);
+        Illuminate\Support\Facades\Route::getRoutes()->refreshNameLookups();
+
+        $url = $this->lingua->localizedRoute($routeName, [], 'fr');
+
+        expect($url)->toContain('/fr/dashboard');
+    });
+
+    it('generates localized route URL with domain strategy', function (): void {
+        config([
+            'lingua.url.strategy' => 'domain',
+            'lingua.url.domain.hosts' => [
+                'en' => 'example.com',
+                'fr' => 'fr.example.com',
+            ],
+        ]);
+
+        $routeName = 'lingua.dashboard.domain.'.uniqid();
+        Illuminate\Support\Facades\Route::get('/dashboard', fn (): string => 'dashboard')->name($routeName);
+        Illuminate\Support\Facades\Route::getRoutes()->refreshNameLookups();
+
+        $url = $this->lingua->localizedRoute($routeName, [], 'fr');
+
+        expect($url)->toContain('fr.example.com');
+    });
+
+    it('passes additional parameters to route', function (): void {
+        config([
+            'lingua.url.strategy' => 'prefix',
+            'lingua.url.prefix.segment' => 1,
+        ]);
+
+        $routeName = 'lingua.users.show.'.uniqid();
+        Illuminate\Support\Facades\Route::get('/{locale}/users/{id}', fn (): string => 'user')->name($routeName);
+        Illuminate\Support\Facades\Route::getRoutes()->refreshNameLookups();
+
+        $url = $this->lingua->localizedRoute($routeName, ['id' => 123], 'fr');
+
+        expect($url)->toContain('/fr/users/123');
+    });
+
+    it('generates relative URL when absolute is false', function (): void {
+        config([
+            'lingua.url.strategy' => 'prefix',
+            'lingua.url.prefix.segment' => 1,
+        ]);
+
+        $routeName = 'lingua.profile.'.uniqid();
+        Illuminate\Support\Facades\Route::get('/{locale}/profile', fn (): string => 'profile')->name($routeName);
+        Illuminate\Support\Facades\Route::getRoutes()->refreshNameLookups();
+
+        $url = $this->lingua->localizedRoute($routeName, [], 'de', false);
+
+        expect($url)->toBe('/de/profile');
+    });
+});
+
+describe('switchLocaleUrl', function (): void {
+    it('generates URL to switch locale with prefix strategy', function (): void {
+        config([
+            'lingua.url.strategy' => 'prefix',
+            'lingua.url.prefix.segment' => 1,
+        ]);
+
+        $request = Illuminate\Http\Request::create('https://example.com/en/dashboard');
+
+        $url = $this->lingua->switchLocaleUrl('fr', $request);
+
+        expect($url)->toBe('https://example.com/fr/dashboard');
+    });
+
+    it('generates URL to switch locale with domain strategy', function (): void {
+        config([
+            'lingua.url.strategy' => 'domain',
+            'lingua.url.domain.hosts' => [
+                'en' => 'example.com',
+                'fr' => 'fr.example.com',
+            ],
+        ]);
+
+        $request = Illuminate\Http\Request::create('https://example.com/dashboard');
+
+        $url = $this->lingua->switchLocaleUrl('fr', $request);
+
+        expect($url)->toBe('https://fr.example.com/dashboard');
+    });
+
+    it('preserves query string when switching locale', function (): void {
+        config([
+            'lingua.url.strategy' => 'prefix',
+            'lingua.url.prefix.segment' => 1,
+        ]);
+
+        $request = Illuminate\Http\Request::create('https://example.com/en/dashboard?page=1&sort=name');
+
+        $url = $this->lingua->switchLocaleUrl('fr', $request);
+
+        expect($url)->toBe('https://example.com/fr/dashboard?page=1&sort=name');
+    });
+});

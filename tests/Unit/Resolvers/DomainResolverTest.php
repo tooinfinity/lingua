@@ -174,4 +174,69 @@ describe('DomainResolver', function (): void {
         // No full map match, falls back to subdomain
         expect($resolver->resolve($request))->toBe('fr');
     });
+
+    it('returns null for unknown strategy in order array', function (): void {
+        config([
+            'lingua.resolvers.domain.order' => ['unknown_strategy'],
+            'lingua.resolvers.domain.full_map' => [],
+            'lingua.resolvers.domain.subdomain.enabled' => false,
+        ]);
+
+        $resolver = app(DomainResolver::class);
+        $request = Request::create('http://fr.example.com/dashboard');
+
+        expect($resolver->resolve($request))->toBeNull();
+    });
+
+    it('skips unknown strategies and continues with valid ones', function (): void {
+        config([
+            'lingua.resolvers.domain.order' => ['invalid', 'unknown', 'subdomain'],
+            'lingua.resolvers.domain.subdomain.enabled' => true,
+        ]);
+
+        $resolver = app(DomainResolver::class);
+        $request = Request::create('http://fr.example.com/dashboard');
+
+        // Should skip invalid strategies and find locale via subdomain
+        expect($resolver->resolve($request))->toBe('fr');
+    });
+
+    it('returns null when label position is negative', function (): void {
+        config([
+            'lingua.resolvers.domain.order' => ['subdomain'],
+            'lingua.resolvers.domain.subdomain.enabled' => true,
+            'lingua.resolvers.domain.subdomain.label' => 0, // Results in index -1
+        ]);
+
+        $resolver = app(DomainResolver::class);
+        $request = Request::create('http://fr.example.com/dashboard');
+
+        expect($resolver->resolve($request))->toBeNull();
+    });
+
+    it('returns null when label position exceeds available parts', function (): void {
+        config([
+            'lingua.resolvers.domain.order' => ['subdomain'],
+            'lingua.resolvers.domain.subdomain.enabled' => true,
+            'lingua.resolvers.domain.subdomain.label' => 10, // Way beyond available parts
+        ]);
+
+        $resolver = app(DomainResolver::class);
+        $request = Request::create('http://fr.example.com/dashboard');
+
+        expect($resolver->resolve($request))->toBeNull();
+    });
+
+    it('returns null when label index does not exist in parts array', function (): void {
+        config([
+            'lingua.resolvers.domain.order' => ['subdomain'],
+            'lingua.resolvers.domain.subdomain.enabled' => true,
+            'lingua.resolvers.domain.subdomain.label' => 5, // Index 4 doesn't exist in 3-part domain
+        ]);
+
+        $resolver = app(DomainResolver::class);
+        $request = Request::create('http://en.example.com/dashboard');
+
+        expect($resolver->resolve($request))->toBeNull();
+    });
 });

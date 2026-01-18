@@ -72,7 +72,10 @@ final readonly class UrlPrefixResolver implements LocaleResolverInterface
             return null;
         }
 
-        return $segments[$index];
+        /** @var string $segment */
+        $segment = $segments[$index];
+
+        return $segment;
     }
 
     /**

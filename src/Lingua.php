@@ -26,6 +26,7 @@ final readonly class Lingua
      *
      * When called without a request, falls back to session-based resolution
      * for backward compatibility.
+     *
      * @throws BindingResolutionException
      */
     public function getLocale(?Request $request = null): string
