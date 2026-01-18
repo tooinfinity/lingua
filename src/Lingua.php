@@ -161,6 +161,49 @@ final readonly class Lingua
     }
 
     /**
+     * Check if a locale uses right-to-left text direction.
+     *
+     * When no locale is provided, checks the current locale.
+     * Supports both full locale codes (ar_SA) and base language codes (ar).
+     */
+    public function isRtl(?string $locale = null): bool
+    {
+        $localeToCheck = $locale ?? $this->getLocale();
+        $baseLanguage = $this->extractBaseLanguage($localeToCheck);
+
+        return in_array($baseLanguage, $this->getRtlLocales(), true);
+    }
+
+    /**
+     * Get the list of configured RTL locales.
+     *
+     * @return array<string>
+     */
+    public function getRtlLocales(): array
+    {
+        /** @var ConfigRepository $config */
+        $config = $this->app->make(ConfigRepository::class);
+
+        /** @var array<string> $rtlLocales */
+        $rtlLocales = $config->get('lingua.rtl_locales', [
+            'ar', 'he', 'fa', 'ur', 'ps', 'sd', 'ku', 'ug', 'yi', 'prs', 'dv',
+        ]);
+
+        return $rtlLocales;
+    }
+
+    /**
+     * Get the text direction for a locale.
+     *
+     * Returns 'rtl' for right-to-left locales, 'ltr' for left-to-right.
+     * When no locale is provided, uses the current locale.
+     */
+    public function getDirection(?string $locale = null): string
+    {
+        return $this->isRtl($locale) ? 'rtl' : 'ltr';
+    }
+
+    /**
      * Load translations from PHP files in lang/{locale}/*.php.
      *
      * @return array<string, mixed>
@@ -276,5 +319,24 @@ final readonly class Lingua
 
         // Otherwise use resolver config (with fallback to legacy for full backward compat)
         return $resolverKey ?? $legacyKey;
+    }
+
+    /**
+     * Extract the base language code from a locale string.
+     *
+     * Examples:
+     * - ar_SA → ar
+     * - en-US → en
+     * - fr → fr
+     */
+    private function extractBaseLanguage(string $locale): string
+    {
+        $normalized = $this->normalizeLocale($locale);
+
+        if (str_contains($normalized, '_')) {
+            return explode('_', $normalized, 2)[0];
+        }
+
+        return $normalized;
     }
 }

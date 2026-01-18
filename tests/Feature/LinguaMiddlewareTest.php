@@ -49,10 +49,41 @@ it('shares translations via inertia', function (): void {
     expect($linguaData)->toBeArray()
         ->toHaveKey('locale')
         ->toHaveKey('locales')
-        ->toHaveKey('translations');
+        ->toHaveKey('translations')
+        ->toHaveKey('direction')
+        ->toHaveKey('isRtl');
 
     expect($linguaData['locale'])->toBe('en');
     expect($linguaData['locales'])->toBe(['en', 'fr', 'es']);
+});
+
+it('shares ltr direction for english locale', function (): void {
+    session()->put('lingua.locale', 'en');
+
+    $response = $this->get('/test-lingua');
+
+    $response->assertOk();
+
+    $linguaData = $response->json('lingua');
+
+    expect($linguaData['direction'])->toBe('ltr');
+    expect($linguaData['isRtl'])->toBeFalse();
+});
+
+it('shares rtl direction for arabic locale', function (): void {
+    // Add Arabic to supported locales for this test
+    config()->set('lingua.locales', ['en', 'fr', 'es', 'ar']);
+
+    session()->put('lingua.locale', 'ar');
+
+    $response = $this->get('/test-lingua');
+
+    $response->assertOk();
+
+    $linguaData = $response->json('lingua');
+
+    expect($linguaData['direction'])->toBe('rtl');
+    expect($linguaData['isRtl'])->toBeTrue();
 });
 
 describe('middleware auto-registration', function (): void {

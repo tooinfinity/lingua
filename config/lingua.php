@@ -135,4 +135,28 @@ return [
     |
     */
     'translation_driver' => 'php',
+
+    /*
+    |--------------------------------------------------------------------------
+    | RTL (Right-to-Left) Locales
+    |--------------------------------------------------------------------------
+    |
+    | An array of locale codes that use right-to-left text direction.
+    | These are checked using the base language code (e.g., 'ar' matches 'ar_SA').
+    |
+    | Common RTL languages:
+    | - ar: Arabic
+    | - he: Hebrew
+    | - fa: Persian/Farsi
+    | - ur: Urdu
+    | - ps: Pashto
+    | - sd: Sindhi
+    | - ku: Kurdish (Sorani)
+    | - ug: Uyghur
+    | - yi: Yiddish
+    | - prs: Dari
+    | - dv: Dhivehi (Maldivian)
+    |
+    */
+    'rtl_locales' => ['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'ku', 'ug', 'yi', 'prs', 'dv'],
 ];

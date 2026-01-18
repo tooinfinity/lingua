@@ -29,6 +29,8 @@ final readonly class LinguaMiddleware
             'locale' => $this->lingua->getLocale($request),
             'locales' => $this->lingua->supportedLocales(),
             'translations' => $this->lingua->translations(),
+            'direction' => $this->lingua->getDirection(),
+            'isRtl' => $this->lingua->isRtl(),
         ]);
 
         return $next($request);

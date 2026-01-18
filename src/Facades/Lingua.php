@@ -12,6 +12,9 @@ use TooInfinity\Lingua\Lingua as LinguaService;
  * @method static void setLocale(string $locale)
  * @method static array<string> supportedLocales()
  * @method static array<string, mixed> translations()
+ * @method static bool isRtl(?string $locale = null)
+ * @method static array<string> getRtlLocales()
+ * @method static string getDirection(?string $locale = null)
  *
  * @see LinguaService
  */
