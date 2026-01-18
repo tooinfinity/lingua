@@ -343,6 +343,8 @@ Returns an object with the following properties:
 | `__` | `(key: string, replacements?: Record<string, string \| number>) => string` | Translation function |
 | `locale` | `string` | Current locale |
 | `locales` | `string[]` | List of supported locales |
+| `direction` | `'ltr' \| 'rtl'` | Text direction for current locale |
+| `isRtl` | `boolean` | Whether current locale is RTL |
 
 #### Translation Function `__()`
  
@@ -372,6 +374,8 @@ interface LinguaProps {
             messages: Record<string, string>;
             // ... other translation files
         };
+        direction: 'ltr' | 'rtl'; // Text direction
+        isRtl: boolean;           // Whether locale is RTL
     };
 }
 ```
