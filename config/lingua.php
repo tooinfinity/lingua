@@ -43,7 +43,7 @@ return [
     | The order in which locale resolvers are checked. The first resolver
     | that returns a valid, supported locale will be used.
     |
-    | Available resolvers: 'session', 'cookie', 'query', 'header', 'url_segment'
+    | Available resolvers: 'session', 'cookie', 'query', 'header', 'url_prefix', 'domain'
     |
     */
     'resolution_order' => ['session', 'cookie', 'query', 'header'],
@@ -80,9 +80,30 @@ return [
             'use_quality' => true,  // Respect quality values in Accept-Language header
         ],
 
-        'url_segment' => [
+        'url_prefix' => [
             'enabled' => false,  // Enable/disable this resolver (disabled by default)
-            'position' => 1,     // URL segment position (1-based, e.g., /fr/dashboard = position 1)
+            'segment' => 1,      // URL segment position (1-based, e.g., /fr/dashboard = segment 1)
+            'optional' => true,  // Allow missing locale prefix (graceful handling)
+            'patterns' => [      // Regex patterns to validate locale format
+                '^[a-z]{2}([_-][A-Za-z]{2})?$',
+            ],
+        ],
+
+        'domain' => [
+            'enabled' => false,       // Enable/disable this resolver (disabled by default)
+            'order' => ['full', 'subdomain'],  // Evaluation order: check full map first, then subdomain
+            'full_map' => [           // Full domain to locale mapping (e.g., 'example.de' => 'de')
+                // 'example.de' => 'de',
+                // 'example.fr' => 'fr',
+            ],
+            'subdomain' => [
+                'enabled' => true,    // Enable subdomain locale detection
+                'label' => 1,         // Subdomain label position (1-based from left, e.g., fr.example.com = label 1)
+                'patterns' => [       // Regex patterns to validate subdomain as locale
+                    '^[a-z]{2}([_-][A-Za-z]{2})?$',
+                ],
+                'base_domains' => [], // Restrict to specific base domains (empty = allow all)
+            ],
         ],
     ],
 
@@ -159,4 +180,33 @@ return [
     |
     */
     'rtl_locales' => ['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'ku', 'ug', 'yi', 'prs', 'dv'],
+
+    /*
+    |--------------------------------------------------------------------------
+    | URL Localization Strategy
+    |--------------------------------------------------------------------------
+    |
+    | Configure how URLs are localized for your application.
+    |
+    | Supported strategies:
+    | - null: No URL transformation (default)
+    | - 'prefix': Locale in URL path (e.g., /fr/dashboard)
+    | - 'domain': Locale-specific domains (e.g., fr.example.com or example.fr)
+    |
+    */
+    'url' => [
+        'strategy' => null,  // 'prefix' | 'domain' | null
+
+        'prefix' => [
+            'segment' => 1,  // URL segment position for locale (1-based)
+        ],
+
+        'domain' => [
+            'hosts' => [     // Locale to host mapping for URL generation
+                // 'en' => 'example.com',
+                // 'fr' => 'fr.example.com',
+                // 'de' => 'example.de',
+            ],
+        ],
+    ],
 ];

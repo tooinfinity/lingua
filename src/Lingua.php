@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace TooInfinity\Lingua;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use TooInfinity\Lingua\Exceptions\UnsupportedLocaleException;
 use TooInfinity\Lingua\Support\LocaleResolverManager;
+use TooInfinity\Lingua\Support\LocalizedUrlGenerator;
 
 final readonly class Lingua
 {
@@ -23,6 +26,7 @@ final readonly class Lingua
      *
      * When called without a request, falls back to session-based resolution
      * for backward compatibility.
+     * @throws BindingResolutionException
      */
     public function getLocale(?Request $request = null): string
     {
@@ -47,6 +51,9 @@ final readonly class Lingua
         return $this->getLocaleFromSession($default);
     }
 
+    /**
+     * @throws BindingResolutionException
+     */
     public function setLocale(string $locale): void
     {
         /** @var ConfigRepository $config */
@@ -97,6 +104,7 @@ final readonly class Lingua
      * Validate that a locale is in the supported locales list.
      *
      * @throws UnsupportedLocaleException When the locale is not supported
+     * @throws BindingResolutionException
      */
     public function validateLocale(string $locale): void
     {
@@ -129,6 +137,8 @@ final readonly class Lingua
 
     /**
      * @return array<string>
+     *
+     * @throws BindingResolutionException
      */
     public function supportedLocales(): array
     {
@@ -145,6 +155,9 @@ final readonly class Lingua
      * Get translations for the current locale based on the configured driver.
      *
      * @return array<string, mixed>
+     *
+     * @throws BindingResolutionException
+     * @throws FileNotFoundException
      */
     public function translations(): array
     {
@@ -178,6 +191,8 @@ final readonly class Lingua
      * Get the list of configured RTL locales.
      *
      * @return array<string>
+     *
+     * @throws BindingResolutionException
      */
     public function getRtlLocales(): array
     {
@@ -201,6 +216,61 @@ final readonly class Lingua
     public function getDirection(?string $locale = null): string
     {
         return $this->isRtl($locale) ? 'rtl' : 'ltr';
+    }
+
+    /**
+     * Generate a localized URL from a given URL.
+     *
+     * @param  string  $url  The URL to localize
+     * @param  string|null  $locale  The target locale (defaults to current locale)
+     * @param  Request|null  $request  Optional request for context
+     *
+     * @throws BindingResolutionException
+     */
+    public function localizedUrl(string $url, ?string $locale = null, ?Request $request = null): string
+    {
+        /** @var LocalizedUrlGenerator $generator */
+        $generator = $this->app->make(LocalizedUrlGenerator::class);
+
+        return $generator->localizedUrl($url, $locale, $request);
+    }
+
+    /**
+     * Generate a localized route URL.
+     *
+     * @param  string  $name  The route name
+     * @param  array<string, mixed>  $parameters  Route parameters
+     * @param  string|null  $locale  The target locale (defaults to current locale)
+     * @param  bool  $absolute  Whether to generate an absolute URL
+     *
+     * @throws BindingResolutionException
+     */
+    public function localizedRoute(
+        string $name,
+        array $parameters = [],
+        ?string $locale = null,
+        bool $absolute = true
+    ): string {
+        /** @var LocalizedUrlGenerator $generator */
+        $generator = $this->app->make(LocalizedUrlGenerator::class);
+
+        return $generator->localizedRoute($name, $parameters, $locale, $absolute);
+    }
+
+    /**
+     * Generate a URL to switch the current page to a different locale.
+     *
+     * @param  string  $locale  The target locale
+     * @param  Request|null  $request  The current request (defaults to current request)
+     *
+     * @throws BindingResolutionException
+     */
+    public function switchLocaleUrl(string $locale, ?Request $request = null): string
+    {
+        /** @var LocalizedUrlGenerator $generator */
+        $generator = $this->app->make(LocalizedUrlGenerator::class);
+
+        return $generator->switchLocaleUrl($locale, $request);
     }
 
     /**
@@ -240,6 +310,8 @@ final readonly class Lingua
      * Load translations from JSON file at lang/{locale}.json.
      *
      * @return array<string, mixed>
+     *
+     * @throws FileNotFoundException
      */
     private function loadJsonTranslations(): array
     {

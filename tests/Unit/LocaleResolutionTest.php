@@ -19,7 +19,8 @@ describe('LocaleResolverManager', function (): void {
             ->toContain('cookie')
             ->toContain('query')
             ->toContain('header')
-            ->toContain('url_segment');
+            ->toContain('url_prefix')
+            ->toContain('domain');
     });
 
     it('returns configured resolution order', function (): void {
@@ -36,7 +37,8 @@ describe('LocaleResolverManager', function (): void {
         config(['lingua.resolvers.cookie.enabled' => true]);
         config(['lingua.resolvers.query.enabled' => true]);
         config(['lingua.resolvers.header.enabled' => true]);
-        config(['lingua.resolvers.url_segment.enabled' => true]);
+        config(['lingua.resolvers.url_prefix.enabled' => true]);
+        config(['lingua.resolvers.domain.enabled' => true]);
 
         $manager = app(LocaleResolverManager::class);
 
@@ -52,8 +54,11 @@ describe('LocaleResolverManager', function (): void {
         expect($manager->createResolver('header'))->toBeInstanceOf(
             TooInfinity\Lingua\Support\Resolvers\HeaderResolver::class
         );
-        expect($manager->createResolver('url_segment'))->toBeInstanceOf(
-            TooInfinity\Lingua\Support\Resolvers\UrlSegmentResolver::class
+        expect($manager->createResolver('url_prefix'))->toBeInstanceOf(
+            TooInfinity\Lingua\Support\Resolvers\UrlPrefixResolver::class
+        );
+        expect($manager->createResolver('domain'))->toBeInstanceOf(
+            TooInfinity\Lingua\Support\Resolvers\DomainResolver::class
         );
     });
 
@@ -274,11 +279,11 @@ describe('Locale Normalization in Resolution', function (): void {
         expect($this->lingua->getLocale($request))->toBe('en_US');
     });
 
-    it('normalizes locale from URL segment', function (): void {
-        config(['lingua.resolution_order' => ['url_segment']]);
-        config(['lingua.resolvers.url_segment.enabled' => true]);
+    it('normalizes locale from URL prefix', function (): void {
+        config(['lingua.resolution_order' => ['url_prefix']]);
+        config(['lingua.resolvers.url_prefix.enabled' => true]);
 
-        $request = Request::create('/en-us/dashboard');
+        $request = Request::create('/en-US/dashboard');
 
         expect($this->lingua->getLocale($request))->toBe('en_US');
     });
@@ -309,20 +314,20 @@ describe('Header Resolution Integration', function (): void {
     });
 });
 
-describe('URL Segment Resolution Integration', function (): void {
+describe('URL Prefix Resolution Integration', function (): void {
     beforeEach(function (): void {
         config(['lingua.locales' => ['en', 'fr', 'de']]);
-        config(['lingua.resolution_order' => ['url_segment', 'session']]);
-        config(['lingua.resolvers.url_segment.enabled' => true]);
+        config(['lingua.resolution_order' => ['url_prefix', 'session']]);
+        config(['lingua.resolvers.url_prefix.enabled' => true]);
     });
 
-    it('resolves locale from URL segment', function (): void {
+    it('resolves locale from URL prefix', function (): void {
         $request = Request::create('/fr/dashboard');
 
         expect($this->lingua->getLocale($request))->toBe('fr');
     });
 
-    it('falls back to session when URL segment is not a valid locale', function (): void {
+    it('falls back to session when URL prefix is not a valid locale', function (): void {
         session()->put('lingua.locale', 'de');
 
         $request = Request::create('/admin/dashboard');

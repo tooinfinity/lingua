@@ -13,6 +13,8 @@ use TooInfinity\Lingua\Console\InstallCommand;
 use TooInfinity\Lingua\Facades\Lingua as LinguaFacade;
 use TooInfinity\Lingua\Http\Middleware\LinguaMiddleware;
 use TooInfinity\Lingua\Support\LocaleResolverManager;
+use TooInfinity\Lingua\Support\LocalizedUrlGenerator;
+use TooInfinity\Lingua\Support\Routing\LinguaRouteMacros;
 
 final class LinguaServiceProvider extends ServiceProvider
 {
@@ -25,6 +27,12 @@ final class LinguaServiceProvider extends ServiceProvider
         $this->app->singleton(LocaleResolverManager::class, fn (Application $app): LocaleResolverManager => new LocaleResolverManager(
             $app,
             $app->make(ConfigRepository::class)
+        ));
+
+        $this->app->singleton(LocalizedUrlGenerator::class, fn (Application $app): LocalizedUrlGenerator => new LocalizedUrlGenerator(
+            $app->make(ConfigRepository::class),
+            $app->make(\Illuminate\Contracts\Routing\UrlGenerator::class),
+            $app->make(Lingua::class)
         ));
 
         // Register facade alias
@@ -44,6 +52,9 @@ final class LinguaServiceProvider extends ServiceProvider
         }
 
         $this->registerMiddleware();
+
+        // Register route macros
+        LinguaRouteMacros::register();
 
         if ($this->app->runningInConsole()) {
             $this->commands([
