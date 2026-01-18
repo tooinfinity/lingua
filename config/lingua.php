@@ -159,6 +159,94 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Lazy Loading Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure lazy/partial translation loading to improve performance for
+    | applications with many translation files. When enabled, only specified
+    | translation groups are loaded instead of all translations.
+    |
+    | Note: Lazy loading only works with the 'php' translation driver.
+    | JSON translations are loaded as a single file and cannot be split.
+    |
+    */
+    'lazy_loading' => [
+        /*
+        |--------------------------------------------------------------------------
+        | Enable Lazy Loading
+        |--------------------------------------------------------------------------
+        |
+        | Set to true to enable lazy loading of translations. When disabled,
+        | all translations are loaded at once (default behavior).
+        |
+        */
+        'enabled' => false,
+
+        /*
+        |--------------------------------------------------------------------------
+        | Auto-Detect Page
+        |--------------------------------------------------------------------------
+        |
+        | When enabled, automatically detects the Inertia page name and loads
+        | the corresponding translation file. This eliminates the need to
+        | manually specify translation groups via middleware parameters.
+        |
+        | Examples:
+        | - 'Pages/Dashboard' => loads 'dashboard' translations
+        | - 'Pages/Users/Index' => loads 'users' translations
+        | - 'Admin/Users/Edit' => loads 'admin-users' translations
+        |
+        */
+        'auto_detect_page' => true,
+
+        /*
+        |--------------------------------------------------------------------------
+        | Page Group Resolver
+        |--------------------------------------------------------------------------
+        |
+        | Custom resolver for mapping Inertia page names to translation groups.
+        | Can be a closure or a class name that implements a resolve() method.
+        |
+        | Set to null to use the default PageTranslationResolver.
+        |
+        | Example with closure:
+        | 'page_group_resolver' => fn (string $page) => [Str::kebab($page)],
+        |
+        | Example with class:
+        | 'page_group_resolver' => App\Support\CustomPageResolver::class,
+        |
+        */
+        'page_group_resolver' => null,
+
+        /*
+        |--------------------------------------------------------------------------
+        | Default Groups
+        |--------------------------------------------------------------------------
+        |
+        | Translation groups that are always loaded regardless of route.
+        | These are typically common translations used across the application.
+        |
+        */
+        'default_groups' => [],
+
+        /*
+        |--------------------------------------------------------------------------
+        | Cache Configuration
+        |--------------------------------------------------------------------------
+        |
+        | Configure caching for loaded translation groups. This uses Laravel's
+        | cache system to store translations between requests.
+        |
+        */
+        'cache' => [
+            'enabled' => true,
+            'ttl' => 3600, // Cache TTL in seconds (1 hour)
+            'prefix' => 'lingua_translations', // Cache key prefix
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | RTL (Right-to-Left) Locales
     |--------------------------------------------------------------------------
     |

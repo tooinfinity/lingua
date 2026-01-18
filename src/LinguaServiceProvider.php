@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace TooInfinity\Lingua;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Contracts\Routing\UrlGenerator;
 use Illuminate\Foundation\AliasLoader;
 use Illuminate\Foundation\Application;
 use Illuminate\Routing\Router;
@@ -14,6 +16,7 @@ use TooInfinity\Lingua\Facades\Lingua as LinguaFacade;
 use TooInfinity\Lingua\Http\Middleware\LinguaMiddleware;
 use TooInfinity\Lingua\Support\LocaleResolverManager;
 use TooInfinity\Lingua\Support\LocalizedUrlGenerator;
+use TooInfinity\Lingua\Support\PageTranslationResolver;
 use TooInfinity\Lingua\Support\Routing\LinguaRouteMacros;
 
 final class LinguaServiceProvider extends ServiceProvider
@@ -31,8 +34,12 @@ final class LinguaServiceProvider extends ServiceProvider
 
         $this->app->singleton(LocalizedUrlGenerator::class, fn (Application $app): LocalizedUrlGenerator => new LocalizedUrlGenerator(
             $app->make(ConfigRepository::class),
-            $app->make(\Illuminate\Contracts\Routing\UrlGenerator::class),
+            $app->make(UrlGenerator::class),
             $app->make(Lingua::class)
+        ));
+
+        $this->app->singleton(PageTranslationResolver::class, fn (Application $app): PageTranslationResolver => new PageTranslationResolver(
+            $app->make(ConfigRepository::class)
         ));
 
         // Register facade alias
@@ -65,6 +72,7 @@ final class LinguaServiceProvider extends ServiceProvider
 
     /**
      * Register the middleware alias and optionally auto-register to a middleware group.
+     * @throws BindingResolutionException
      */
     private function registerMiddleware(): void
     {

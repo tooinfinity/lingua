@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace TooInfinity\Lingua;
 
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
@@ -14,12 +15,18 @@ use Illuminate\Support\Facades\File;
 use TooInfinity\Lingua\Exceptions\UnsupportedLocaleException;
 use TooInfinity\Lingua\Support\LocaleResolverManager;
 use TooInfinity\Lingua\Support\LocalizedUrlGenerator;
+use TooInfinity\Lingua\Support\PageTranslationResolver;
+use TooInfinity\Lingua\Support\TranslationCache;
 
 final readonly class Lingua
 {
+    private TranslationCache $translationCache;
+
     public function __construct(
         private Application $app
-    ) {}
+    ) {
+        $this->translationCache = new TranslationCache;
+    }
 
     /**
      * Get the current locale.
@@ -155,6 +162,9 @@ final readonly class Lingua
     /**
      * Get translations for the current locale based on the configured driver.
      *
+     * When lazy loading is enabled and using the PHP driver, only default groups
+     * are loaded. Use translationsFor() or translationGroup() for specific groups.
+     *
      * @return array<string, mixed>
      *
      * @throws BindingResolutionException
@@ -168,10 +178,207 @@ final readonly class Lingua
         /** @var string $driver */
         $driver = $config->get('lingua.translation_driver', 'php');
 
-        return match ($driver) {
-            'json' => $this->loadJsonTranslations(),
-            default => $this->loadPhpTranslations(),
-        };
+        // JSON driver always loads all translations (single file)
+        if ($driver === 'json') {
+            return $this->loadJsonTranslations();
+        }
+
+        // Check if lazy loading is enabled
+        /** @var bool $lazyLoadingEnabled */
+        $lazyLoadingEnabled = $config->get('lingua.lazy_loading.enabled', false);
+
+        if ($lazyLoadingEnabled) {
+            /** @var array<string> $defaultGroups */
+            $defaultGroups = $config->get('lingua.lazy_loading.default_groups', []);
+
+            return $this->translationsFor($defaultGroups);
+        }
+
+        return $this->loadPhpTranslations();
+    }
+
+    /**
+     * Load translations for specific groups.
+     *
+     * @param  array<string>  $groups  The translation groups to load
+     * @return array<string, mixed>
+     *
+     * @throws BindingResolutionException
+     */
+    public function translationsFor(array $groups): array
+    {
+        if ($groups === []) {
+            return [];
+        }
+
+        $translations = [];
+
+        foreach ($groups as $group) {
+            $groupTranslations = $this->translationGroup($group);
+            if ($groupTranslations !== []) {
+                $translations[$group] = $groupTranslations;
+            }
+        }
+
+        return $translations;
+    }
+
+    /**
+     * Load a single translation group.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws BindingResolutionException
+     */
+    public function translationGroup(string $group): array
+    {
+        $locale = $this->getLocale();
+
+        // Check in-memory cache first
+        if ($this->translationCache->has($locale, $group)) {
+            /** @var array<string, mixed> $cached */
+            $cached = $this->translationCache->get($locale, $group);
+
+            return $cached;
+        }
+
+        // Check persistent cache if enabled
+        $cachedTranslations = $this->getFromPersistentCache($locale, $group);
+        if ($cachedTranslations !== null) {
+            $this->translationCache->put($locale, $group, $cachedTranslations);
+
+            return $cachedTranslations;
+        }
+
+        // Load from file
+        $translations = $this->loadPhpTranslationGroup($locale, $group);
+
+        // Store in both caches
+        $this->translationCache->put($locale, $group, $translations);
+        $this->storeToPersistentCache($locale, $group, $translations);
+
+        return $translations;
+    }
+
+    /**
+     * Get all available translation groups for the current locale.
+     *
+     * @return array<string>
+     */
+    public function availableGroups(): array
+    {
+        $locale = $this->getLocale();
+        $path = $this->app->langPath($locale);
+
+        if (! File::isDirectory($path)) {
+            return [];
+        }
+
+        $groups = [];
+        $files = File::files($path);
+
+        foreach ($files as $file) {
+            if ($file->getExtension() === 'php') {
+                $groups[] = $file->getFilenameWithoutExtension();
+            }
+        }
+
+        sort($groups);
+
+        return $groups;
+    }
+
+    /**
+     * Check if lazy loading is enabled.
+     *
+     * @throws BindingResolutionException
+     */
+    public function isLazyLoadingEnabled(): bool
+    {
+        /** @var ConfigRepository $config */
+        $config = $this->app->make(ConfigRepository::class);
+
+        /** @var bool $enabled */
+        $enabled = $config->get('lingua.lazy_loading.enabled', false);
+
+        return $enabled;
+    }
+
+    /**
+     * Check if auto-detect page is enabled.
+     *
+     * @throws BindingResolutionException
+     */
+    public function isAutoDetectPageEnabled(): bool
+    {
+        /** @var ConfigRepository $config */
+        $config = $this->app->make(ConfigRepository::class);
+
+        /** @var bool $enabled */
+        $enabled = $config->get('lingua.lazy_loading.auto_detect_page', true);
+
+        return $enabled;
+    }
+
+    /**
+     * Get translation groups for a specific Inertia page.
+     *
+     * This method resolves the page name to translation groups and merges
+     * them with the default groups configured for lazy loading.
+     *
+     * @param  string  $pageName  The Inertia page component name
+     * @return array<string, mixed>
+     *
+     * @throws BindingResolutionException
+     */
+    public function translationsForPage(string $pageName): array
+    {
+        /** @var PageTranslationResolver $resolver */
+        $resolver = $this->app->make(PageTranslationResolver::class);
+
+        $pageGroups = $resolver->resolve($pageName);
+
+        /** @var ConfigRepository $config */
+        $config = $this->app->make(ConfigRepository::class);
+
+        /** @var array<string> $defaultGroups */
+        $defaultGroups = $config->get('lingua.lazy_loading.default_groups', []);
+
+        $allGroups = array_unique(array_merge($defaultGroups, $pageGroups));
+
+        return $this->translationsFor($allGroups);
+    }
+
+    /**
+     * Get translation groups for a page name without loading them.
+     *
+     * @param  string  $pageName  The Inertia page component name
+     * @return array<string>
+     *
+     * @throws BindingResolutionException
+     */
+    public function getGroupsForPage(string $pageName): array
+    {
+        /** @var PageTranslationResolver $resolver */
+        $resolver = $this->app->make(PageTranslationResolver::class);
+
+        return $resolver->resolve($pageName);
+    }
+
+    /**
+     * Clear the translation cache.
+     *
+     * @throws BindingResolutionException
+     */
+    public function clearTranslationCache(?string $locale = null): void
+    {
+        if ($locale !== null) {
+            $this->translationCache->flushLocale($locale);
+            $this->clearPersistentCacheForLocale($locale);
+        } else {
+            $this->translationCache->flush();
+            $this->clearAllPersistentCache();
+        }
     }
 
     /**
@@ -333,6 +540,171 @@ final readonly class Lingua
         }
 
         return $decoded;
+    }
+
+    /**
+     * Load a single PHP translation group for a specific locale.
+     *
+     * @return array<string, mixed>
+     */
+    private function loadPhpTranslationGroup(string $locale, string $group): array
+    {
+        $path = $this->app->langPath($locale.'/'.$group.'.php');
+
+        if (! File::exists($path)) {
+            return [];
+        }
+
+        $content = require $path;
+
+        if (! is_array($content)) {
+            return [];
+        }
+
+        /** @var array<string, mixed> $content */
+        return $content;
+    }
+
+    /**
+     * Get translations from persistent cache.
+     *
+     * @return array<string, mixed>|null
+     *
+     * @throws BindingResolutionException
+     */
+    private function getFromPersistentCache(string $locale, string $group): ?array
+    {
+        /** @var ConfigRepository $config */
+        $config = $this->app->make(ConfigRepository::class);
+
+        /** @var bool $cacheEnabled */
+        $cacheEnabled = $config->get('lingua.lazy_loading.cache.enabled', true);
+
+        if (! $cacheEnabled) {
+            return null;
+        }
+
+        /** @var CacheRepository $cache */
+        $cache = $this->app->make(CacheRepository::class);
+
+        $cacheKey = $this->buildCacheKey($locale, $group);
+
+        /** @var array<string, mixed>|null $cached */
+        $cached = $cache->get($cacheKey);
+
+        return $cached;
+    }
+
+    /**
+     * Store translations to persistent cache.
+     *
+     * @param  array<string, mixed>  $translations
+     *
+     * @throws BindingResolutionException
+     */
+    private function storeToPersistentCache(string $locale, string $group, array $translations): void
+    {
+        /** @var ConfigRepository $config */
+        $config = $this->app->make(ConfigRepository::class);
+
+        /** @var bool $cacheEnabled */
+        $cacheEnabled = $config->get('lingua.lazy_loading.cache.enabled', true);
+
+        if (! $cacheEnabled) {
+            return;
+        }
+
+        /** @var CacheRepository $cache */
+        $cache = $this->app->make(CacheRepository::class);
+
+        /** @var int $ttl */
+        $ttl = $config->get('lingua.lazy_loading.cache.ttl', 3600);
+
+        $cacheKey = $this->buildCacheKey($locale, $group);
+
+        $cache->put($cacheKey, $translations, $ttl);
+    }
+
+    /**
+     * Clear persistent cache for a specific locale.
+     *
+     * @throws BindingResolutionException
+     */
+    private function clearPersistentCacheForLocale(string $locale): void
+    {
+        /** @var ConfigRepository $config */
+        $config = $this->app->make(ConfigRepository::class);
+
+        /** @var bool $cacheEnabled */
+        $cacheEnabled = $config->get('lingua.lazy_loading.cache.enabled', true);
+
+        if (! $cacheEnabled) {
+            return;
+        }
+
+        // Clear cache for all available groups for this locale
+        $groups = $this->getAvailableGroupsForLocale($locale);
+
+        /** @var CacheRepository $cache */
+        $cache = $this->app->make(CacheRepository::class);
+
+        foreach ($groups as $group) {
+            $cacheKey = $this->buildCacheKey($locale, $group);
+            $cache->forget($cacheKey);
+        }
+    }
+
+    /**
+     * Clear all persistent translation cache.
+     *
+     * @throws BindingResolutionException
+     */
+    private function clearAllPersistentCache(): void
+    {
+        foreach ($this->supportedLocales() as $locale) {
+            $this->clearPersistentCacheForLocale($locale);
+        }
+    }
+
+    /**
+     * Build a cache key for a translation group.
+     *
+     * @throws BindingResolutionException
+     */
+    private function buildCacheKey(string $locale, string $group): string
+    {
+        /** @var ConfigRepository $config */
+        $config = $this->app->make(ConfigRepository::class);
+
+        /** @var string $prefix */
+        $prefix = $config->get('lingua.lazy_loading.cache.prefix', 'lingua_translations');
+
+        return $prefix.'.'.$locale.'.'.$group;
+    }
+
+    /**
+     * Get available groups for a specific locale.
+     *
+     * @return array<string>
+     */
+    private function getAvailableGroupsForLocale(string $locale): array
+    {
+        $path = $this->app->langPath($locale);
+
+        if (! File::isDirectory($path)) {
+            return [];
+        }
+
+        $groups = [];
+        $files = File::files($path);
+
+        foreach ($files as $file) {
+            if ($file->getExtension() === 'php') {
+                $groups[] = $file->getFilenameWithoutExtension();
+            }
+        }
+
+        return $groups;
     }
 
     /**
