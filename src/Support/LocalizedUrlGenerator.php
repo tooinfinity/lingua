@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TooInfinity\Lingua\Support;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Routing\UrlGenerator;
 use Illuminate\Http\Request;
 use TooInfinity\Lingua\Lingua;
@@ -30,6 +31,8 @@ final readonly class LocalizedUrlGenerator
      * @param  string  $url  The URL to localize
      * @param  string|null  $locale  The target locale (defaults to current locale)
      * @param  Request|null  $request  Optional request for context
+     *
+     * @throws BindingResolutionException
      */
     public function localizedUrl(string $url, ?string $locale = null, ?Request $request = null): string
     {
@@ -50,6 +53,8 @@ final readonly class LocalizedUrlGenerator
      * @param  array<string, mixed>  $parameters  Route parameters
      * @param  string|null  $locale  The target locale (defaults to current locale)
      * @param  bool  $absolute  Whether to generate an absolute URL
+     *
+     * @throws BindingResolutionException
      */
     public function localizedRoute(
         string $name,
@@ -80,6 +85,8 @@ final readonly class LocalizedUrlGenerator
      *
      * @param  string  $locale  The target locale
      * @param  Request|null  $request  The current request (defaults to current request)
+     *
+     * @throws BindingResolutionException
      */
     public function switchLocaleUrl(string $locale, ?Request $request = null): string
     {
@@ -115,7 +122,7 @@ final readonly class LocalizedUrlGenerator
 
         /** @var array{scheme?: string, host?: string, port?: int, user?: string, pass?: string, path?: string, query?: string, fragment?: string} $parsed */
         $path = $parsed['path'] ?? '/';
-        $segments = array_values(array_filter(explode('/', $path), fn (string $s): bool => $s !== ''));
+        $segments = array_values(array_filter(explode('/', $path), static fn (string $s): bool => $s !== ''));
 
         /** @var int $segmentPosition */
         $segmentPosition = $this->config->get('lingua.url.prefix.segment', 1);

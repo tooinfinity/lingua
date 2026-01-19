@@ -12,6 +12,8 @@ use Illuminate\Contracts\Session\Session;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use JsonException;
+use Psr\SimpleCache\InvalidArgumentException;
 use TooInfinity\Lingua\Exceptions\UnsupportedLocaleException;
 use TooInfinity\Lingua\Support\LocaleResolverManager;
 use TooInfinity\Lingua\Support\LocalizedUrlGenerator;
@@ -131,6 +133,8 @@ final readonly class Lingua
 
     /**
      * Check if a locale is supported.
+     *
+     * @throws BindingResolutionException
      */
     public function isLocaleSupported(string $locale): bool
     {
@@ -169,6 +173,8 @@ final readonly class Lingua
      *
      * @throws BindingResolutionException
      * @throws FileNotFoundException
+     * @throws InvalidArgumentException
+     * @throws JsonException
      */
     public function translations(): array
     {
@@ -203,7 +209,7 @@ final readonly class Lingua
      * @param  array<string>  $groups  The translation groups to load
      * @return array<string, mixed>
      *
-     * @throws BindingResolutionException
+     * @throws BindingResolutionException|InvalidArgumentException
      */
     public function translationsFor(array $groups): array
     {
@@ -228,7 +234,7 @@ final readonly class Lingua
      *
      * @return array<string, mixed>
      *
-     * @throws BindingResolutionException
+     * @throws BindingResolutionException|InvalidArgumentException
      */
     public function translationGroup(string $group): array
     {
@@ -264,6 +270,8 @@ final readonly class Lingua
      * Get all available translation groups for the current locale.
      *
      * @return array<string>
+     *
+     * @throws BindingResolutionException
      */
     public function availableGroups(): array
     {
@@ -485,6 +493,8 @@ final readonly class Lingua
      * Load translations from PHP files in lang/{locale}/*.php.
      *
      * @return array<string, mixed>
+     *
+     * @throws BindingResolutionException
      */
     private function loadPhpTranslations(): array
     {
@@ -520,6 +530,7 @@ final readonly class Lingua
      * @return array<string, mixed>
      *
      * @throws FileNotFoundException
+     * @throws BindingResolutionException
      */
     private function loadJsonTranslations(): array
     {
@@ -570,7 +581,7 @@ final readonly class Lingua
      *
      * @return array<string, mixed>|null
      *
-     * @throws BindingResolutionException
+     * @throws BindingResolutionException|InvalidArgumentException
      */
     private function getFromPersistentCache(string $locale, string $group): ?array
     {
@@ -724,6 +735,8 @@ final readonly class Lingua
 
     /**
      * Get locale from session (backward compatibility method).
+     *
+     * @throws BindingResolutionException
      */
     private function getLocaleFromSession(string $default): string
     {
@@ -733,7 +746,6 @@ final readonly class Lingua
         /** @var Session $session */
         $session = $this->app->make(Session::class);
 
-        /** @var string $sessionKey */
         $sessionKey = $this->getSessionKey($config);
 
         /** @var string $locale */

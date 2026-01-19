@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace TooInfinity\Lingua\Http\Middleware;
 
 use Closure;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use JsonException;
+use Psr\SimpleCache\InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 use TooInfinity\Lingua\Lingua;
 use TooInfinity\Lingua\Support\PageTranslationResolver;
@@ -35,6 +39,10 @@ final readonly class LinguaMiddleware
      *
      * @param  Closure(Request): Response  $next
      * @param  string  ...$groups  Optional translation groups to load (only when lazy loading is enabled)
+     *
+     * @throws BindingResolutionException
+     * @throws InvalidArgumentException
+     * @throws JsonException
      */
     public function handle(Request $request, Closure $next, string ...$groups): Response
     {
@@ -70,6 +78,10 @@ final readonly class LinguaMiddleware
      *
      * @param  array<string>  $middlewareGroups  Groups specified via middleware parameters
      * @return array<string, mixed>
+     *
+     * @throws BindingResolutionException
+     * @throws FileNotFoundException
+     * @throws InvalidArgumentException|JsonException
      */
     private function resolveTranslations(array $middlewareGroups): array
     {
@@ -97,6 +109,8 @@ final readonly class LinguaMiddleware
      * Check if auto-detection should be performed.
      *
      * @param  array<string>  $middlewareGroups
+     *
+     * @throws BindingResolutionException
      */
     private function shouldAutoDetect(array $middlewareGroups): bool
     {
@@ -143,6 +157,10 @@ final readonly class LinguaMiddleware
      * Share translations after detecting the Inertia page from the response.
      *
      * @param  array<string>  $middlewareGroups
+     *
+     * @throws BindingResolutionException
+     * @throws InvalidArgumentException
+     * @throws JsonException
      */
     private function shareTranslationsWithPageDetection(
         Response $response,
@@ -177,6 +195,8 @@ final readonly class LinguaMiddleware
 
     /**
      * Extract the Inertia page component name from the response.
+     *
+     * @throws JsonException
      */
     private function extractPageNameFromResponse(Response $response): ?string
     {
@@ -198,11 +218,13 @@ final readonly class LinguaMiddleware
 
     /**
      * Extract page name from JSON response content.
+     *
+     * @throws JsonException
      */
     private function extractPageNameFromJson(string $content): ?string
     {
         /** @var array{component?: string}|null $data */
-        $data = json_decode($content, true);
+        $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
 
         if (! is_array($data) || ! isset($data['component'])) {
             return null;
@@ -240,6 +262,8 @@ final readonly class LinguaMiddleware
      * Update the response content with the new translations.
      *
      * @param  array<string, mixed>  $translations
+     *
+     * @throws JsonException
      */
     private function updateResponseWithTranslations(Response $response, array $translations): void
     {
@@ -265,6 +289,8 @@ final readonly class LinguaMiddleware
      * Update JSON response with translations.
      *
      * @param  array<string, mixed>  $translations
+     *
+     * @throws JsonException
      */
     private function updateJsonResponse(Response $response, string $content, array $translations): void
     {
@@ -294,6 +320,8 @@ final readonly class LinguaMiddleware
      * Update HTML response with translations.
      *
      * @param  array<string, mixed>  $translations
+     *
+     * @throws JsonException
      */
     private function updateHtmlResponse(Response $response, string $content, array $translations): void
     {

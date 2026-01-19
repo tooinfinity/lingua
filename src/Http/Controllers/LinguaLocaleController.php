@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace TooInfinity\Lingua\Http\Controllers;
 
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Validation\Rule;
+use Psr\SimpleCache\InvalidArgumentException;
 use TooInfinity\Lingua\Lingua;
 
 final class LinguaLocaleController extends Controller
@@ -19,6 +21,8 @@ final class LinguaLocaleController extends Controller
 
     /**
      * Update the current locale.
+     *
+     * @throws BindingResolutionException
      */
     public function __invoke(Request $request): RedirectResponse
     {
@@ -38,6 +42,8 @@ final class LinguaLocaleController extends Controller
      *
      * This endpoint allows fetching translation groups dynamically via AJAX
      * when lazy loading is enabled.
+     *
+     * @throws BindingResolutionException|InvalidArgumentException
      */
     public function translations(string $group): JsonResponse
     {
@@ -54,6 +60,8 @@ final class LinguaLocaleController extends Controller
      * Get translations for multiple groups.
      *
      * Accepts groups as comma-separated query parameter or JSON body.
+     *
+     * @throws BindingResolutionException|InvalidArgumentException
      */
     public function translationsForGroups(Request $request): JsonResponse
     {
@@ -75,6 +83,8 @@ final class LinguaLocaleController extends Controller
 
     /**
      * Get all available translation groups for the current locale.
+     *
+     * @throws BindingResolutionException
      */
     public function availableGroups(): JsonResponse
     {

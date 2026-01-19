@@ -73,7 +73,7 @@ final class LinguaRouteMacros
                 'domain' => $host,
             ]);
 
-            Route::group($groupOptions, function () use ($routes, $locale): void {
+            Route::group($groupOptions, static function () use ($routes, $locale): void {
                 // Make locale available within the route group
                 // This can be accessed via route parameter binding or middleware
                 app()->instance('lingua.route.locale', $locale);

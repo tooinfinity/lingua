@@ -69,7 +69,7 @@ final readonly class PageTranslationResolver
             return '';
         }
 
-        // Normalize separators (handle both forward and back slashes)
+        // Normalize separators (handle both forward and backslashes)
         $pageName = str_replace('\\', '/', $pageName);
 
         // Remove common "Pages" prefix if present
@@ -176,7 +176,8 @@ final readonly class PageTranslationResolver
     private function toGroupName(string $segment): string
     {
         // Convert PascalCase/camelCase to kebab-case
-        $kebab = (string) preg_replace('/([a-z])([A-Z])/', '$1-$2', $segment);
+        /** @var string $kebab */
+        $kebab = preg_replace('/([a-z])([A-Z])/', '$1-$2', $segment);
 
         return mb_strtolower($kebab);
     }

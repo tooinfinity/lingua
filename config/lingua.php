@@ -116,7 +116,7 @@ return [
     |
     */
     'routes' => [
-        'enabled' => true,  // Set to false to disable package routes
+        'enabled' => true,  // Set it false to disable package routes
         'prefix' => '',     // Route prefix (e.g., 'api' or 'admin')
         'middleware' => ['web'],  // Middleware to apply to routes
     ],

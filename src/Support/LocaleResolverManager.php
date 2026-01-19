@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TooInfinity\Lingua\Support;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use TooInfinity\Lingua\Contracts\LocaleResolverInterface;
@@ -40,6 +41,8 @@ final readonly class LocaleResolverManager
      * @param  Request  $request  The HTTP request
      * @param  callable(string): bool  $isSupported  Callback to check if a locale is supported
      * @param  callable(string): string  $normalize  Callback to normalize a locale
+     *
+     * @throws BindingResolutionException
      */
     public function resolve(Request $request, callable $isSupported, callable $normalize): ?string
     {
@@ -99,6 +102,8 @@ final readonly class LocaleResolverManager
      * Create a resolver instance by name.
      *
      * Returns null if the resolver is disabled or doesn't exist.
+     *
+     * @throws BindingResolutionException
      */
     public function createResolver(string $name): ?LocaleResolverInterface
     {

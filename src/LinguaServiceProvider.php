@@ -47,6 +47,9 @@ final class LinguaServiceProvider extends ServiceProvider
         $loader->alias('Lingua', LinguaFacade::class);
     }
 
+    /**
+     * @throws BindingResolutionException
+     */
     public function boot(): void
     {
         $this->publishes([
@@ -72,6 +75,7 @@ final class LinguaServiceProvider extends ServiceProvider
 
     /**
      * Register the middleware alias and optionally auto-register to a middleware group.
+     *
      * @throws BindingResolutionException
      */
     private function registerMiddleware(): void
