@@ -189,3 +189,44 @@ describe('page name resolution rules from requirements', function (): void {
         expect($this->resolver->resolve('Admin/Users/Index'))->toBe(['admin-users']);
     });
 });
+
+describe('PageTranslationResolver Coverage Edge Cases', function (): void {
+    it('returns empty string when segments are empty after filter', function (): void {
+        expect($this->resolver->extractGroupName('///'))->toBe('');
+    });
+
+    it('returns empty array when custom resolver is not a class', function (): void {
+        config(['lingua.lazy_loading.page_group_resolver' => 'NonExistentClass']);
+
+        $resolver = new PageTranslationResolver(app(ConfigRepository::class));
+        expect($resolver->resolve('Test'))->toBe([]);
+    });
+
+    it('returns empty array when custom resolver class has no resolve method', function (): void {
+        $mock = new class {};
+        app()->instance('NoMethodResolver', $mock);
+
+        config(['lingua.lazy_loading.page_group_resolver' => 'NoMethodResolver']);
+
+        $resolver = new PageTranslationResolver(app(ConfigRepository::class));
+        expect($resolver->resolve('Test'))->toBe([]);
+    });
+
+    it('uses custom resolver class string directly', function (): void {
+        // Define a real class for the test
+        if (! class_exists('TestStringResolver')) {
+            final class TestStringResolver
+            {
+                public function resolve(string $page): array
+                {
+                    return ['class-string-'.$page];
+                }
+            }
+        }
+
+        config(['lingua.lazy_loading.page_group_resolver' => TestStringResolver::class]);
+
+        $resolver = new PageTranslationResolver(app(ConfigRepository::class));
+        expect($resolver->resolve('Test'))->toBe(['class-string-Test']);
+    });
+});

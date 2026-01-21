@@ -570,3 +570,42 @@ describe('switchLocaleUrl', function (): void {
         expect($url)->toBe('https://example.com/fr/dashboard?page=1&sort=name');
     });
 });
+
+describe('Lingua Coverage Edge Cases', function (): void {
+    it('uses persistent cache when available', function (): void {
+        config(['lingua.lazy_loading.cache.enabled' => true]);
+
+        // Use Laravel's real cache with array driver for testing
+        config(['cache.default' => 'array']);
+
+        // Pre-populate the cache with test data
+        $cacheKey = 'lingua_translations.en.test-group';
+        cache()->put($cacheKey, ['foo' => 'bar'], 3600);
+
+        $lingua = new Lingua($this->app);
+
+        $translations = $lingua->translationGroup('test-group');
+
+        expect($translations)->toBe(['foo' => 'bar']);
+    });
+
+    it('returns empty array when php translation file returns non-array', function (): void {
+        $langPath = lang_path('en');
+        if (! File::exists($langPath)) {
+            File::makeDirectory($langPath, 0755, true);
+        }
+
+        File::put($langPath.'/bad.php', '<?php return "not an array";');
+
+        $lingua = new Lingua($this->app);
+
+        // Ensure cache doesn't interfere
+        $lingua->clearTranslationCache();
+
+        $translations = $lingua->translationGroup('bad');
+
+        expect($translations)->toBe([]);
+
+        File::delete($langPath.'/bad.php');
+    });
+});

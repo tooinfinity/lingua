@@ -119,7 +119,9 @@ final readonly class PageTranslationResolver
      * - For paths like 'Admin/Users/Index' => 'admin-users'
      * - For paths like 'Settings/Profile' => 'settings'
      *
-     * @param  array<string>  $segments
+     * Note: This method is only called when segments has 2+ elements (see extractGroupName).
+     *
+     * @param  array<string>  $segments  Array with at least 2 elements
      */
     private function resolveNestedPath(array $segments): string
     {
@@ -134,23 +136,14 @@ final readonly class PageTranslationResolver
             // Remove the last segment and combine remaining with hyphens
             array_pop($segments);
 
-            if ($segments === []) {
-                return '';
-            }
-
             return $this->combineSegments($segments);
         }
 
         // For other nested paths, combine all segments except the last
         // e.g., 'Settings/Profile' => 'settings'
-        if (count($segments) > 1) {
-            // Use all but the last segment
-            array_pop($segments);
+        array_pop($segments);
 
-            return $this->combineSegments($segments);
-        }
-
-        return $this->toGroupName($segments[0]);
+        return $this->combineSegments($segments);
     }
 
     /**
