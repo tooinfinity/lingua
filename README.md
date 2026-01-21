@@ -5,174 +5,192 @@
 [![PHP Version](https://img.shields.io/packagist/php-v/tooinfinity/lingua)](https://packagist.org/packages/tooinfinity/lingua)
 [![Laravel Version](https://img.shields.io/badge/Laravel-11.x%20%7C%2012.x-red.svg)](https://laravel.com)
 [![Latest Stable Version](https://img.shields.io/packagist/v/tooinfinity/lingua)](https://packagist.org/packages/tooinfinity/lingua)
-[![Total Downloads](https://img.shields.io/packagist/dt/tooinfinity/lingua)](https://packagist.org/packages/tooinfinity/lingua)
 [![License](https://img.shields.io/packagist/l/tooinfinity/lingua)](LICENSE.md)
 
-> ⚠️ **Under Development**: This package is currently under active development and is not ready for production use. The API may change without notice.
+> ⚠️ **Under Development**: This package is currently under active development and is not ready for production use.
 
-A minimal Laravel localization package for Inertia.js and React applications. Share your Laravel translations with your React frontend seamlessly.
+Share Laravel translations with your Inertia.js + React frontend.
 
-## Features
+## Quick Start
 
-- 🌐 Session-based locale storage
-- 📁 PHP translation files support
-- 🔄 Middleware for locale detection
-- ⚡ Share translations with Inertia.js
-- ⚛️ React hook for translations (`useTranslations`)
-- 🎛️ Basic locale switching controller
-- 🎭 Facade for easy static access
-- ⚙️ Simple configuration
-
-## Requirements
-
-- PHP 8.4+
-- Laravel 11.0+ or 12.0+
-- Inertia.js 2.0+
-- React 18+
-
-## Installation
-
-### Quick Install (Recommended)
-
-Install the Laravel package via Composer:
+### 1. Install
 
 ```bash
 composer require tooinfinity/lingua
-```
-
-Then run the install command to publish the config and install the React package:
-
-```bash
 php artisan lingua:install
 ```
 
-This command will:
-- Publish the configuration file to `config/lingua.php`
-- Auto-detect your package manager (npm, yarn, pnpm, or bun)
-- Install the `@tooinfinity/lingua-react` package
+This installs the Laravel package, publishes the config, and installs the React package (`@tooinfinity/lingua-react`).
 
-### Manual Installation
+### 2. Configure Locales
 
-If you prefer to install manually:
-
-**1. Install the Laravel package:**
-
-```bash
-composer require tooinfinity/lingua
-```
-
-**2. Publish the configuration file:**
-
-```bash
-php artisan vendor:publish --tag=lingua-config
-```
-
-**3. Install the React package:**
-
-```bash
-# Using npm
-npm install @tooinfinity/lingua-react
-
-# Using yarn
-yarn add @tooinfinity/lingua-react
-
-# Using pnpm
-pnpm add @tooinfinity/lingua-react
-
-# Using bun
-bun add @tooinfinity/lingua-react
-```
-
-## Configuration
-
-After publishing, you'll find the config file at `config/lingua.php`:
+Edit `config/lingua.php`:
 
 ```php
-<?php
+'locales' => ['en', 'fr', 'es'],
+```
 
+### 3. Middleware
+
+**The middleware is auto-registered to the `web` group by default.** No action needed for most apps.
+
+To disable auto-registration and add manually:
+
+```php
+// config/lingua.php
+'middleware' => [
+    'auto_register' => false,
+],
+
+// bootstrap/app.php
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->web(append: [
+        \TooInfinity\Lingua\Http\Middleware\LinguaMiddleware::class,
+    ]);
+})
+```
+
+### 4. Create Translations
+
+```
+lang/
+├── en/
+│   └── messages.php
+└── fr/
+    └── messages.php
+```
+
+```php
+// lang/en/messages.php
 return [
-    // Session key for storing the locale
-    'session_key' => 'lingua.locale',
+    'welcome' => 'Welcome!',
+    'greeting' => 'Hello, :name!',
+];
 
-    // Supported locales
-    'locales' => ['en'],
-
-    // Default locale (null = use config('app.locale'))
-    'default' => null,
-
-    // Route configuration
-    'routes' => [
-        'enabled' => true,      // Set to false to disable package routes
-        'prefix' => '',         // Route prefix (e.g., 'api' or 'admin')
-        'middleware' => ['web'], // Middleware to apply to routes
-    ],
-
-    // Controller override (null = use default package controller)
-    'controller' => null,
+// lang/fr/messages.php
+return [
+    'welcome' => 'Bienvenue!',
+    'greeting' => 'Bonjour, :name!',
 ];
 ```
 
-### Configuration Options
+### 5. Use in React
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `session_key` | string | The session key used to store the user's locale |
-| `locales` | array | List of supported locale codes |
-| `default` | string\|null | Default locale. If `null`, uses Laravel's `app.locale` |
-| `routes` | array | Route configuration options (see below) |
-| `controller` | string\|null | Custom controller class. If `null`, uses the default package controller |
+```tsx
+import { useTranslations } from '@tooinfinity/lingua-react';
 
-### Route Configuration
+function Welcome() {
+    const { __, locale, locales } = useTranslations();
 
-You can customize how the package routes are registered using the `routes` configuration array:
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | bool | `true` | Whether to register package routes |
-| `prefix` | string | `''` | Route prefix (e.g., `'api'` makes route `/api/lingua/locale`) |
-| `middleware` | array | `['web']` | Middleware to apply to routes |
-
-**Disable package routes** (to define your own):
-
-```php
-'routes' => [
-    'enabled' => false,
-],
+    return (
+        <div>
+            <h1>{__('messages.welcome')}</h1>
+            <p>{__('messages.greeting', { name: 'John' })}</p>
+            <p>Current: {locale}</p>
+        </div>
+    );
+}
 ```
 
-**Add route prefix:**
+## Locale Switching
+
+```tsx
+import { router } from '@inertiajs/react';
+import { useTranslations } from '@tooinfinity/lingua-react';
+
+function LocaleSwitcher() {
+    const { locale, locales } = useTranslations();
+
+    const switchLocale = (newLocale: string) => {
+        router.post('/lingua/locale', { locale: newLocale });
+    };
+
+    return (
+        <div>
+            {locales.map((loc) => (
+                <button
+                    key={loc}
+                    onClick={() => switchLocale(loc)}
+                    disabled={loc === locale}
+                >
+                    {loc.toUpperCase()}
+                </button>
+            ))}
+        </div>
+    );
+}
+```
+
+## Lazy Loading (Optional)
+
+Load only the translations needed for each page instead of all at once.
 
 ```php
-'routes' => [
+// config/lingua.php
+'lazy_loading' => [
     'enabled' => true,
-    'prefix' => 'api',  // Route becomes POST /api/lingua/locale
-    'middleware' => ['web'],
+    'auto_detect_page' => true,
+    'default_groups' => ['common', 'validation'], // Always loaded
 ],
 ```
 
-**Custom middleware:**
+When enabled, Lingua automatically loads translations based on the Inertia page:
+
+| Page | Loads |
+|------|-------|
+| `Dashboard` | `dashboard.php` |
+| `Pages/Users/Index` | `users.php` |
+| `Admin/Settings` | `admin-settings.php` |
+
+## API Reference
+
+### `useTranslations()` Hook
+
+```tsx
+const { __, locale, locales, direction, isRtl } = useTranslations();
+
+__('messages.welcome')                    // "Welcome!"
+__('messages.greeting', { name: 'John' }) // "Hello, John!"
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `__` | `function` | Translation function |
+| `locale` | `string` | Current locale |
+| `locales` | `string[]` | Supported locales |
+| `direction` | `'ltr' \| 'rtl'` | Text direction |
+| `isRtl` | `boolean` | Is RTL locale |
+
+### Facade
 
 ```php
-'routes' => [
-    'enabled' => true,
-    'prefix' => '',
-    'middleware' => ['web', 'auth'],  // Require authentication
-],
+use TooInfinity\Lingua\Facades\Lingua;
+
+Lingua::getLocale();           // Get current locale
+Lingua::setLocale('fr');       // Set locale
+Lingua::supportedLocales();    // Get supported locales
+Lingua::translations();        // Get all translations
 ```
+
+### Routes
+
+| Method | URI | Description |
+|--------|-----|-------------|
+| POST | `/lingua/locale` | Switch locale |
+| GET | `/lingua/translations/{group}` | Get single translation group |
+| POST | `/lingua/translations` | Get multiple groups |
+| GET | `/lingua/groups` | List available groups |
+
+## Advanced
 
 ### Custom Controller
 
-You can override the default locale controller by specifying your own controller class:
-
 ```php
+// config/lingua.php
 'controller' => \App\Http\Controllers\LocaleController::class,
 ```
 
-Your custom controller should handle the locale change. Here's an example:
-
 ```php
-<?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -189,282 +207,38 @@ class LocaleController
 
         $lingua->setLocale($validated['locale']);
 
-        return redirect()->route('dashboard'); // Custom redirect
+        return redirect()->route('dashboard');
     }
 }
 ```
 
-## Usage
-
-### 1. Add the Middleware
-
-Add the `lingua` middleware to your routes that use Inertia:
+### Custom Page Resolver
 
 ```php
-// routes/web.php
-Route::middleware(['web', 'lingua'])->group(function () {
-    Route::get('/', fn () => Inertia::render('Home'));
-    Route::get('/dashboard', fn () => Inertia::render('Dashboard'));
-});
+// config/lingua.php
+'lazy_loading' => [
+    'enabled' => true,
+    'page_group_resolver' => \App\Support\CustomPageResolver::class,
+],
 ```
-
-Or add it globally in `bootstrap/app.php`:
 
 ```php
-->withMiddleware(function (Middleware $middleware) {
-    $middleware->web(append: [
-        \TooInfinity\Lingua\Http\Middleware\LinguaMiddleware::class,
-    ]);
-})
-```
+namespace App\Support;
 
-### 2. Create Translation Files
+use Illuminate\Support\Str;
 
-Create your PHP translation files in the `lang` directory:
-
-```
-lang/
-├── en/
-│   ├── auth.php
-│   ├── messages.php
-│   └── validation.php
-└── fr/
-    ├── auth.php
-    ├── messages.php
-    └── validation.php
-```
-
-Example `lang/en/messages.php`:
-
-```php
-<?php
-
-return [
-    'welcome' => 'Welcome to our application!',
-    'greeting' => 'Hello, :name!',
-    'items_count' => 'You have :count items.',
-];
-```
-
-Example `lang/fr/messages.php`:
-
-```php
-<?php
-
-return [
-    'welcome' => 'Bienvenue dans notre application!',
-    'greeting' => 'Bonjour, :name!',
-    'items_count' => 'Vous avez :count articles.',
-];
-```
-
-### 3. Use in React Components
-
-Import and use the `useTranslations` hook in your React components:
-
-```tsx
-import { useTranslations } from 'lingua/resources/js';
-
-function Welcome() {
-    const { __, locale, locales } = useTranslations();
-
-    return (
-        <div>
-            <h1>{__('messages.welcome')}</h1>
-            <p>{__('messages.greeting', { name: 'John' })}</p>
-            <p>{__('messages.items_count', { count: 5 })}</p>
-            <p>Current locale: {locale}</p>
-        </div>
-    );
-}
-```
-
-### 4. Switch Locale
-
-Lingua provides a built-in route for switching locales:
-
-**Using a Form:**
-
-```tsx
-function LocaleSwitcher() {
-    const { locale, locales } = useTranslations();
-
-    return (
-        <form method="POST" action="/lingua/locale">
-            <input type="hidden" name="_token" value={csrfToken} />
-            <select name="locale" onChange={(e) => e.target.form?.submit()}>
-                {locales.map((loc) => (
-                    <option key={loc} value={loc} selected={loc === locale}>
-                        {loc.toUpperCase()}
-                    </option>
-                ))}
-            </select>
-        </form>
-    );
-}
-```
-
-**Using Inertia Router:**
-
-```tsx
-import { router } from '@inertiajs/react';
-
-function LocaleSwitcher() {
-    const { locale, locales } = useTranslations();
-
-    const switchLocale = (newLocale: string) => {
-        router.post('/lingua/locale', { locale: newLocale });
-    };
-
-    return (
-        <div>
-            {locales.map((loc) => (
-                <button
-                    key={loc}
-                    onClick={() => switchLocale(loc)}
-                    className={loc === locale ? 'active' : ''}
-                >
-                    {loc.toUpperCase()}
-                </button>
-            ))}
-        </div>
-    );
-}
-```
-
-## API Reference
-
-### React Hook: `useTranslations()`
-
-Returns an object with the following properties:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `__` | `(key: string, replacements?: Record<string, string \| number>) => string` | Translation function |
-| `locale` | `string` | Current locale |
-| `locales` | `string[]` | List of supported locales |
-| `direction` | `'ltr' \| 'rtl'` | Text direction for current locale |
-| `isRtl` | `boolean` | Whether current locale is RTL |
-
-#### Translation Function `__()`
- 
-```tsx
-// Simple translation
-__('messages.welcome')  // "Welcome to our application!"
-
-// With replacements (Laravel-style :placeholder)
-__('messages.greeting', { name: 'John' })  // "Hello, John!"
-__('messages.items_count', { count: 5 })   // "You have 5 items."
-
-// Returns the key if translation not found
-__('messages.nonexistent')  // "messages.nonexistent"
-```
-
-### Inertia Shared Props
-
-Lingua shares the following data with Inertia:
-
-```typescript
-interface LinguaProps {
-    lingua: {
-        locale: string;           // Current locale
-        locales: string[];        // Supported locales
-        translations: {           // All translation groups
-            auth: Record<string, string>;
-            messages: Record<string, string>;
-            // ... other translation files
-        };
-        direction: 'ltr' | 'rtl'; // Text direction
-        isRtl: boolean;           // Whether locale is RTL
-    };
-}
-```
-
-### Facade: `Lingua`
-
-Use the Facade for easy static access anywhere in your application:
-
-```php
-use TooInfinity\Lingua\Facades\Lingua;
-
-// Get current locale
-$locale = Lingua::getLocale();
-
-// Set locale
-Lingua::setLocale('fr');
-
-// Get supported locales
-$locales = Lingua::supportedLocales();
-
-// Get all translations
-$translations = Lingua::translations();
-```
-
-**Available Methods:**
-
-| Method | Return Type | Description |
-|--------|-------------|-------------|
-| `getLocale()` | `string` | Get the current locale |
-| `setLocale(string $locale)` | `void` | Set the current locale |
-| `supportedLocales()` | `array<string>` | Get list of supported locales |
-| `translations()` | `array<string, mixed>` | Get all translations for current locale |
-
-### PHP Service: `Lingua`
-
-You can also inject the Lingua service directly:
-
-```php
-use TooInfinity\Lingua\Lingua;
-
-class MyController
+class CustomPageResolver
 {
-    public function __construct(
-        private readonly Lingua $lingua
-    ) {}
-
-    public function index()
+    public function resolve(string $pageName): array
     {
-        // Get current locale
-        $locale = $this->lingua->getLocale();
-
-        // Set locale
-        $this->lingua->setLocale('fr');
-
-        // Get supported locales
-        $locales = $this->lingua->supportedLocales();
-
-        // Get all translations
-        $translations = $this->lingua->translations();
+        return match($pageName) {
+            'Dashboard' => ['dashboard', 'widgets'],
+            default => [Str::kebab(basename($pageName))],
+        };
     }
 }
-```
-
-### Routes
-
-| Method | URI | Name | Description |
-|--------|-----|------|-------------|
-| POST | `/lingua/locale` | `lingua.locale.update` | Switch the current locale |
-
-**Request Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `locale` | string | Yes | The locale to switch to (must be in `locales` config) |
-
-## TypeScript Support
-
-Lingua includes TypeScript definitions. You can import types directly:
-
-```tsx
-import { useTranslations, type LinguaProps, type TranslateFunction } from 'lingua/resources/js';
-```
-
-## Testing
-
-```bash
-composer test
 ```
 
 ## License
 
-The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+MIT License. See [LICENSE.md](LICENSE.md).

@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.1.0] - 2026-01-21
+
+### Added
+- **Lazy Loading for Translations**
+  - Enable with `lazy_loading.enabled => true` in config
+  - Auto-detects Inertia page and loads matching translation groups
+  - Page name to translation mapping (e.g., `Pages/Users/Index` → `users.php`)
+  - Default groups always loaded (`common`, etc.)
+  - In-memory and persistent caching support
+
+- **Translation API Endpoints**
+  - `GET /lingua/translations/{group}` - Fetch single translation group
+  - `POST /lingua/translations` - Fetch multiple groups
+  - `GET /lingua/groups` - List available translation groups
+
+- **Middleware Parameters**
+  - Support for explicit groups: `lingua:dashboard,notifications`
+
+- **PageTranslationResolver**
+  - Maps Inertia page names to translation file groups
+  - Custom resolver support via config or closure
+
+- **TranslationCache**
+  - In-memory caching for translation groups
+  - Configurable persistent cache with TTL
+
+### Changed
+- **README.md** - Completely rewritten for simplicity
+  - Clear 5-step Quick Start guide
+  - Concise API reference
+  - Explicit lazy loading documentation
+  - Reduced from ~630 lines to ~244 lines
+
 ## [Unreleased]
 
 ### Added
