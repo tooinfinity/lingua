@@ -17,16 +17,9 @@ use TooInfinity\Lingua\Lingua as LinguaService;
  * @method static array<string, mixed> translationGroup(string $group)
  * @method static array<string> availableGroups()
  * @method static bool isLazyLoadingEnabled()
- * @method static bool isAutoDetectPageEnabled()
- * @method static array<string, mixed> translationsForPage(string $pageName)
- * @method static array<string> getGroupsForPage(string $pageName)
- * @method static void clearTranslationCache(?string $locale = null)
  * @method static bool isRtl(?string $locale = null)
  * @method static array<string> getRtlLocales()
  * @method static string getDirection(?string $locale = null)
- * @method static string localizedUrl(string $url, ?string $locale = null, ?Request $request = null)
- * @method static string localizedRoute(string $name, array<string, mixed> $parameters = [], ?string $locale = null, bool $absolute = true)
- * @method static string switchLocaleUrl(string $locale, ?Request $request = null)
  *
  * @see LinguaService
  */

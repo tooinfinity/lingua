@@ -123,24 +123,17 @@ function LocaleSwitcher() {
 
 ## Lazy Loading (Optional)
 
-Load only the translations needed for each page instead of all at once.
+Load only the translations needed for each request instead of all at once.
 
 ```php
 // config/lingua.php
 'lazy_loading' => [
     'enabled' => true,
-    'auto_detect_page' => true,
     'default_groups' => ['common', 'validation'], // Always loaded
 ],
 ```
 
-When enabled, Lingua automatically loads translations based on the Inertia page:
-
-| Page | Loads |
-|------|-------|
-| `Dashboard` | `dashboard.php` |
-| `Pages/Users/Index` | `users.php` |
-| `Admin/Settings` | `admin-settings.php` |
+When enabled, Lingua only loads the configured default groups unless you request specific groups via `Lingua::translationsFor()` or middleware parameters.
 
 ## API Reference
 
@@ -177,9 +170,6 @@ Lingua::translations();        // Get all translations
 | Method | URI | Description |
 |--------|-----|-------------|
 | POST | `/lingua/locale` | Switch locale |
-| GET | `/lingua/translations/{group}` | Get single translation group |
-| POST | `/lingua/translations` | Get multiple groups |
-| GET | `/lingua/groups` | List available groups |
 
 ## Advanced
 
@@ -208,33 +198,6 @@ class LocaleController
         $lingua->setLocale($validated['locale']);
 
         return redirect()->route('dashboard');
-    }
-}
-```
-
-### Custom Page Resolver
-
-```php
-// config/lingua.php
-'lazy_loading' => [
-    'enabled' => true,
-    'page_group_resolver' => \App\Support\CustomPageResolver::class,
-],
-```
-
-```php
-namespace App\Support;
-
-use Illuminate\Support\Str;
-
-class CustomPageResolver
-{
-    public function resolve(string $pageName): array
-    {
-        return match($pageName) {
-            'Dashboard' => ['dashboard', 'widgets'],
-            default => [Str::kebab(basename($pageName))],
-        };
     }
 }
 ```

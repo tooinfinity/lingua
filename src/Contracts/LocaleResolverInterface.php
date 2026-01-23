@@ -18,7 +18,7 @@ interface LocaleResolverInterface
     /**
      * Resolve all possible locales from the request, ordered by preference.
      *
-     * This method allows resolvers to return multiple candidates (e.g., from Accept-Language header).
+     * This method allows resolvers to return multiple candidates in priority order.
      * The LocaleResolverManager will iterate through these and return the first supported one.
      *
      * @return array<string> Array of locale candidates, ordered by preference

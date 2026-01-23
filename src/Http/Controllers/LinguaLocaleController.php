@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace TooInfinity\Lingua\Http\Controllers;
 
 use Illuminate\Contracts\Container\BindingResolutionException;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Validation\Rule;
-use Psr\SimpleCache\InvalidArgumentException;
 use TooInfinity\Lingua\Lingua;
 
 final class LinguaLocaleController extends Controller
@@ -35,62 +33,5 @@ final class LinguaLocaleController extends Controller
         $this->lingua->setLocale($locale);
 
         return redirect()->back();
-    }
-
-    /**
-     * Get translations for a specific group.
-     *
-     * This endpoint allows fetching translation groups dynamically via AJAX
-     * when lazy loading is enabled.
-     *
-     * @throws BindingResolutionException|InvalidArgumentException
-     */
-    public function translations(string $group): JsonResponse
-    {
-        $translations = $this->lingua->translationGroup($group);
-
-        return response()->json([
-            'group' => $group,
-            'locale' => $this->lingua->getLocale(),
-            'translations' => $translations,
-        ]);
-    }
-
-    /**
-     * Get translations for multiple groups.
-     *
-     * Accepts groups as comma-separated query parameter or JSON body.
-     *
-     * @throws BindingResolutionException|InvalidArgumentException
-     */
-    public function translationsForGroups(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'groups' => ['required', 'array', 'min:1'],
-            'groups.*' => ['required', 'string'],
-        ]);
-
-        /** @var array<string> $groups */
-        $groups = $validated['groups'];
-
-        $translations = $this->lingua->translationsFor($groups);
-
-        return response()->json([
-            'locale' => $this->lingua->getLocale(),
-            'translations' => $translations,
-        ]);
-    }
-
-    /**
-     * Get all available translation groups for the current locale.
-     *
-     * @throws BindingResolutionException
-     */
-    public function availableGroups(): JsonResponse
-    {
-        return response()->json([
-            'locale' => $this->lingua->getLocale(),
-            'groups' => $this->lingua->availableGroups(),
-        ]);
     }
 }

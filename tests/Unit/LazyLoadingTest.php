@@ -22,20 +22,6 @@ afterEach(function (): void {
     // Cleanup
     File::deleteDirectory(lang_path());
 
-    // Clear any cache
-    $this->lingua->clearTranslationCache();
-});
-
-describe('isLazyLoadingEnabled', function (): void {
-    it('returns false by default', function (): void {
-        expect($this->lingua->isLazyLoadingEnabled())->toBeFalse();
-    });
-
-    it('returns true when enabled in config', function (): void {
-        config(['lingua.lazy_loading.enabled' => true]);
-
-        expect($this->lingua->isLazyLoadingEnabled())->toBeTrue();
-    });
 });
 
 describe('availableGroups', function (): void {
@@ -99,19 +85,6 @@ describe('translationGroup', function (): void {
         $translations = $this->lingua->translationGroup('nonexistent');
 
         expect($translations)->toBe([]);
-    });
-
-    it('caches loaded translations in memory', function (): void {
-        // Load once
-        $first = $this->lingua->translationGroup('common');
-
-        // Modify the file
-        File::put($this->langPath.'/common.php', '<?php return ["app_name" => "Modified"];');
-
-        // Should return cached version (in-memory)
-        $second = $this->lingua->translationGroup('common');
-
-        expect($second)->toBe($first);
     });
 
     it('loads different groups independently', function (): void {
@@ -232,63 +205,5 @@ describe('translations with json driver', function (): void {
             'Hello' => 'Hello, World!',
             'Goodbye' => 'Goodbye!',
         ]);
-    });
-});
-
-describe('clearTranslationCache', function (): void {
-    it('clears cache for specific locale', function (): void {
-        // Load some translations to populate cache
-        $this->lingua->translationGroup('auth');
-
-        // Clear cache for current locale
-        $this->lingua->clearTranslationCache('en');
-
-        // Modify the file
-        File::put($this->langPath.'/auth.php', '<?php return ["login" => "Sign In"];');
-
-        // Should load fresh data after cache clear
-        $translations = $this->lingua->translationGroup('auth');
-
-        expect($translations['login'])->toBe('Sign In');
-    });
-
-    it('clears all cache when no locale specified', function (): void {
-        // Load translations
-        $this->lingua->translationGroup('auth');
-        $this->lingua->translationGroup('common');
-
-        // Clear all cache
-        $this->lingua->clearTranslationCache();
-
-        // Modify files
-        File::put($this->langPath.'/auth.php', '<?php return ["login" => "Sign In"];');
-        File::put($this->langPath.'/common.php', '<?php return ["app_name" => "New App"];');
-
-        // Should load fresh data
-        $auth = $this->lingua->translationGroup('auth');
-        $common = $this->lingua->translationGroup('common');
-
-        expect($auth['login'])->toBe('Sign In');
-        expect($common['app_name'])->toBe('New App');
-    });
-});
-
-describe('cache configuration', function (): void {
-    it('respects cache disabled setting', function (): void {
-        config(['lingua.lazy_loading.cache.enabled' => false]);
-
-        // Load translations
-        $this->lingua->translationGroup('auth');
-
-        // Modify the file
-        File::put($this->langPath.'/auth.php', '<?php return ["login" => "Sign In"];');
-
-        // Clear in-memory cache
-        $this->lingua->clearTranslationCache('en');
-
-        // Should load fresh data since persistent cache is disabled
-        $translations = $this->lingua->translationGroup('auth');
-
-        expect($translations['login'])->toBe('Sign In');
     });
 });

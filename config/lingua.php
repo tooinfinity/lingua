@@ -43,10 +43,10 @@ return [
     | The order in which locale resolvers are checked. The first resolver
     | that returns a valid, supported locale will be used.
     |
-    | Available resolvers: 'session', 'cookie', 'query', 'header', 'url_prefix', 'domain'
+    | Available resolvers: 'session', 'cookie'
     |
     */
-    'resolution_order' => ['session', 'cookie', 'query', 'header'],
+    'resolution_order' => ['session', 'cookie'],
 
     /*
     |--------------------------------------------------------------------------
@@ -68,42 +68,6 @@ return [
         'cookie' => [
             'enabled' => true,         // Enable/disable this resolver
             'key' => 'lingua_locale',  // Cookie name
-        ],
-
-        'query' => [
-            'enabled' => false,  // Enable/disable this resolver (disabled by default)
-            'key' => 'locale',   // Query parameter name (e.g., ?locale=fr)
-        ],
-
-        'header' => [
-            'enabled' => false,     // Enable/disable this resolver (disabled by default)
-            'use_quality' => true,  // Respect quality values in Accept-Language header
-        ],
-
-        'url_prefix' => [
-            'enabled' => false,  // Enable/disable this resolver (disabled by default)
-            'segment' => 1,      // URL segment position (1-based, e.g., /fr/dashboard = segment 1)
-            'optional' => true,  // Allow missing locale prefix (graceful handling)
-            'patterns' => [      // Regex patterns to validate locale format
-                '^[a-z]{2}([_-][A-Za-z]{2})?$',
-            ],
-        ],
-
-        'domain' => [
-            'enabled' => false,       // Enable/disable this resolver (disabled by default)
-            'order' => ['full', 'subdomain'],  // Evaluation order: check full map first, then subdomain
-            'full_map' => [           // Full domain to locale mapping (e.g., 'example.de' => 'de')
-                // 'example.de' => 'de',
-                // 'example.fr' => 'fr',
-            ],
-            'subdomain' => [
-                'enabled' => true,    // Enable subdomain locale detection
-                'label' => 1,         // Subdomain label position (1-based from left, e.g., fr.example.com = label 1)
-                'patterns' => [       // Regex patterns to validate subdomain as locale
-                    '^[a-z]{2}([_-][A-Za-z]{2})?$',
-                ],
-                'base_domains' => [], // Restrict to specific base domains (empty = allow all)
-            ],
         ],
     ],
 
@@ -184,42 +148,6 @@ return [
 
         /*
         |--------------------------------------------------------------------------
-        | Auto-Detect Page
-        |--------------------------------------------------------------------------
-        |
-        | When enabled, automatically detects the Inertia page name and loads
-        | the corresponding translation file. This eliminates the need to
-        | manually specify translation groups via middleware parameters.
-        |
-        | Examples:
-        | - 'Pages/Dashboard' => loads 'dashboard' translations
-        | - 'Pages/Users/Index' => loads 'users' translations
-        | - 'Admin/Users/Edit' => loads 'admin-users' translations
-        |
-        */
-        'auto_detect_page' => true,
-
-        /*
-        |--------------------------------------------------------------------------
-        | Page Group Resolver
-        |--------------------------------------------------------------------------
-        |
-        | Custom resolver for mapping Inertia page names to translation groups.
-        | Can be a closure or a class name that implements a resolve() method.
-        |
-        | Set to null to use the default PageTranslationResolver.
-        |
-        | Example with closure:
-        | 'page_group_resolver' => fn (string $page) => [Str::kebab($page)],
-        |
-        | Example with class:
-        | 'page_group_resolver' => App\Support\CustomPageResolver::class,
-        |
-        */
-        'page_group_resolver' => null,
-
-        /*
-        |--------------------------------------------------------------------------
         | Default Groups
         |--------------------------------------------------------------------------
         |
@@ -228,21 +156,6 @@ return [
         |
         */
         'default_groups' => [],
-
-        /*
-        |--------------------------------------------------------------------------
-        | Cache Configuration
-        |--------------------------------------------------------------------------
-        |
-        | Configure caching for loaded translation groups. This uses Laravel's
-        | cache system to store translations between requests.
-        |
-        */
-        'cache' => [
-            'enabled' => true,
-            'ttl' => 3600, // Cache TTL in seconds (1 hour)
-            'prefix' => 'lingua_translations', // Cache key prefix
-        ],
     ],
 
     /*
@@ -269,32 +182,4 @@ return [
     */
     'rtl_locales' => ['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'ku', 'ug', 'yi', 'prs', 'dv'],
 
-    /*
-    |--------------------------------------------------------------------------
-    | URL Localization Strategy
-    |--------------------------------------------------------------------------
-    |
-    | Configure how URLs are localized for your application.
-    |
-    | Supported strategies:
-    | - null: No URL transformation (default)
-    | - 'prefix': Locale in URL path (e.g., /fr/dashboard)
-    | - 'domain': Locale-specific domains (e.g., fr.example.com or example.fr)
-    |
-    */
-    'url' => [
-        'strategy' => null,  // 'prefix' | 'domain' | null
-
-        'prefix' => [
-            'segment' => 1,  // URL segment position for locale (1-based)
-        ],
-
-        'domain' => [
-            'hosts' => [     // Locale to host mapping for URL generation
-                // 'en' => 'example.com',
-                // 'fr' => 'fr.example.com',
-                // 'de' => 'example.de',
-            ],
-        ],
-    ],
 ];

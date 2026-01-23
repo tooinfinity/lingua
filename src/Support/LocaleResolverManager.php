@@ -10,11 +10,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use TooInfinity\Lingua\Contracts\LocaleResolverInterface;
 use TooInfinity\Lingua\Support\Resolvers\CookieResolver;
-use TooInfinity\Lingua\Support\Resolvers\DomainResolver;
-use TooInfinity\Lingua\Support\Resolvers\HeaderResolver;
-use TooInfinity\Lingua\Support\Resolvers\QueryResolver;
 use TooInfinity\Lingua\Support\Resolvers\SessionResolver;
-use TooInfinity\Lingua\Support\Resolvers\UrlPrefixResolver;
 
 final readonly class LocaleResolverManager
 {
@@ -24,10 +20,6 @@ final readonly class LocaleResolverManager
     private const array RESOLVER_MAP = [
         'session' => SessionResolver::class,
         'cookie' => CookieResolver::class,
-        'query' => QueryResolver::class,
-        'header' => HeaderResolver::class,
-        'url_prefix' => UrlPrefixResolver::class,
-        'domain' => DomainResolver::class,
     ];
 
     public function __construct(
