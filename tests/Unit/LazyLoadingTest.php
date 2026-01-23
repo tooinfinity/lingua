@@ -81,6 +81,56 @@ describe('translationGroup', function (): void {
         ]);
     });
 
+    it('falls back to default locale keys when missing', function (): void {
+        config([
+            'lingua.locales' => ['en', 'fr'],
+            'lingua.default' => 'en',
+        ]);
+
+        File::ensureDirectoryExists(lang_path('fr'));
+        File::put(lang_path('fr').'/auth.php', '<?php return ["login" => "Connexion"];');
+
+        $this->lingua->setLocale('fr');
+
+        $translations = $this->lingua->translationGroup('auth');
+
+        expect($translations['login'])->toBe('Connexion')
+            ->and($translations['logout'])->toBe('Logout');
+    });
+
+    it('returns current translations when default locale matches current', function (): void {
+        config([
+            'lingua.locales' => ['en'],
+            'lingua.default' => 'en',
+        ]);
+
+        $translations = $this->lingua->translationGroup('auth');
+
+        expect($translations)->toBe([
+            'login' => 'Login',
+            'logout' => 'Logout',
+        ]);
+    });
+
+    it('returns current translations when fallback group is missing', function (): void {
+        config([
+            'lingua.locales' => ['en', 'fr'],
+            'lingua.default' => 'en',
+        ]);
+
+        File::ensureDirectoryExists(lang_path('fr'));
+        File::put(lang_path('fr').'/auth.php', '<?php return ["login" => "Connexion"];');
+        File::delete(lang_path('en').'/auth.php');
+
+        $this->lingua->setLocale('fr');
+
+        $translations = $this->lingua->translationGroup('auth');
+
+        expect($translations)->toBe([
+            'login' => 'Connexion',
+        ]);
+    });
+
     it('returns empty array for non-existent group', function (): void {
         $translations = $this->lingua->translationGroup('nonexistent');
 
@@ -181,6 +231,48 @@ describe('translations with lazy loading enabled', function (): void {
             ->toHaveKey('validation')
             ->toHaveKey('dashboard');
     });
+
+    it('merges fallback groups when loading all translations', function (): void {
+        config([
+            'lingua.locales' => ['en', 'fr'],
+            'lingua.default' => 'en',
+            'lingua.lazy_loading.enabled' => false,
+        ]);
+
+        File::ensureDirectoryExists(lang_path('fr'));
+        File::put(lang_path('fr').'/common.php', '<?php return ["app_name" => "Nom App"];');
+        File::delete(lang_path('fr').'/validation.php');
+
+        $this->lingua->setLocale('fr');
+
+        $translations = $this->lingua->translations();
+
+        expect($translations['common']['app_name'])->toBe('Nom App')
+            ->and($translations['common']['welcome'])->toBe('Welcome')
+            ->and($translations)->toHaveKey('validation');
+    });
+
+    it('returns current translations when fallback locale files are missing', function (): void {
+        config([
+            'lingua.locales' => ['en', 'fr'],
+            'lingua.default' => 'en',
+            'lingua.lazy_loading.enabled' => false,
+        ]);
+
+        File::ensureDirectoryExists(lang_path('fr'));
+        File::put(lang_path('fr').'/common.php', '<?php return ["app_name" => "Nom App"];');
+        File::deleteDirectory(lang_path('en'));
+
+        $this->lingua->setLocale('fr');
+
+        $translations = $this->lingua->translations();
+
+        expect($translations)->toBe([
+            'common' => [
+                'app_name' => 'Nom App',
+            ],
+        ]);
+    });
 });
 
 describe('translations with json driver', function (): void {
@@ -204,6 +296,67 @@ describe('translations with json driver', function (): void {
             'Welcome' => 'Welcome!',
             'Hello' => 'Hello, World!',
             'Goodbye' => 'Goodbye!',
+        ]);
+    });
+
+    it('falls back to default locale keys when missing', function (): void {
+        config([
+            'lingua.translation_driver' => 'json',
+            'lingua.locales' => ['en', 'fr'],
+            'lingua.default' => 'en',
+        ]);
+
+        File::put(lang_path('en.json'), json_encode([
+            'Welcome' => 'Welcome!',
+            'Goodbye' => 'Goodbye!',
+        ]));
+        File::put(lang_path('fr.json'), json_encode([
+            'Welcome' => 'Bienvenue!',
+        ]));
+
+        $this->lingua->setLocale('fr');
+
+        $translations = $this->lingua->translations();
+
+        expect($translations['Welcome'])->toBe('Bienvenue!')
+            ->and($translations['Goodbye'])->toBe('Goodbye!');
+    });
+
+    it('returns current translations when default locale matches current', function (): void {
+        config([
+            'lingua.translation_driver' => 'json',
+            'lingua.locales' => ['en'],
+            'lingua.default' => 'en',
+        ]);
+
+        File::put(lang_path('en.json'), json_encode([
+            'Welcome' => 'Welcome!',
+        ]));
+
+        $translations = $this->lingua->translations();
+
+        expect($translations)->toBe([
+            'Welcome' => 'Welcome!',
+        ]);
+    });
+
+    it('returns current translations when fallback json is missing', function (): void {
+        config([
+            'lingua.translation_driver' => 'json',
+            'lingua.locales' => ['en', 'fr'],
+            'lingua.default' => 'en',
+        ]);
+
+        File::put(lang_path('fr.json'), json_encode([
+            'Welcome' => 'Bienvenue!',
+        ]));
+
+        $this->lingua->setLocale('fr');
+
+        $translations = $this->lingua->translations();
+
+        expect($translations)->toBe([
+            'Welcome' => 'Bienvenue!',
         ]);
     });
 });

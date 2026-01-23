@@ -162,7 +162,40 @@ use TooInfinity\Lingua\Facades\Lingua;
 Lingua::getLocale();           // Get current locale
 Lingua::setLocale('fr');       // Set locale (optionally persists cookie)
 Lingua::supportedLocales();    // Get supported locales
-Lingua::translations();        // Get all translations
+Lingua::translations();        // Get all translations (missing keys fall back to default locale)
+```
+
+### Fallback Locale Behavior
+
+When a translation key is missing in the current locale, Lingua automatically fills it from the default locale.
+This applies to:
+- PHP translation groups loaded via `Lingua::translationGroup()` and `Lingua::translations()`
+- JSON translations loaded via `Lingua::translations()` when `translation_driver` is `json`
+
+If the current locale already matches the default locale, no fallback merge occurs.
+
+```php
+// config/lingua.php
+'default' => 'en',
+```
+
+```php
+// lang/en/auth.php
+return [
+    'login' => 'Login',
+    'logout' => 'Logout',
+];
+
+// lang/fr/auth.php
+return [
+    'login' => 'Connexion',
+];
+
+Lingua::setLocale('fr');
+
+// 'logout' comes from the default locale
+Lingua::translationGroup('auth');
+// ['login' => 'Connexion', 'logout' => 'Logout']
 ```
 
 ### Routes

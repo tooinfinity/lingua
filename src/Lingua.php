@@ -31,11 +31,9 @@ final readonly class Lingua
      */
     public function getLocale(?Request $request = null): string
     {
-        /** @var ConfigRepository $config */
-        $config = $this->app->make(ConfigRepository::class);
+        $this->app->make(ConfigRepository::class);
 
-        /** @var string $default */
-        $default = $config->get('lingua.default') ?? $config->get('app.locale', 'en');
+        $default = $this->getDefaultLocale();
 
         // If a request is provided, use the resolver manager
         if ($request instanceof Request) {
@@ -176,7 +174,9 @@ final readonly class Lingua
 
         // JSON driver always loads all translations (single file)
         if ($driver === 'json') {
-            return $this->loadJsonTranslations();
+            $translations = $this->loadJsonTranslations();
+
+            return $this->applyFallbackForJson($translations);
         }
 
         // Check if lazy loading is enabled
@@ -190,7 +190,9 @@ final readonly class Lingua
             return $this->translationsFor($defaultGroups);
         }
 
-        return $this->loadPhpTranslations();
+        $translations = $this->loadPhpTranslations();
+
+        return $this->applyFallbackForAllGroups($translations);
     }
 
     /**
@@ -246,7 +248,9 @@ final readonly class Lingua
     {
         $locale = $this->getLocale();
 
-        return $this->loadPhpTranslationGroup($locale, $group);
+        $translations = $this->loadPhpTranslationGroup($locale, $group);
+
+        return $this->applyFallbackForGroup($group, $translations, $locale);
     }
 
     /**
@@ -334,6 +338,17 @@ final readonly class Lingua
     private function loadPhpTranslations(): array
     {
         $locale = $this->getLocale();
+
+        return $this->loadPhpTranslationsForLocale($locale);
+    }
+
+    /**
+     * Load translations from PHP files in lang/{locale}/*.php for a specific locale.
+     *
+     * @return array<string, mixed>
+     */
+    private function loadPhpTranslationsForLocale(string $locale): array
+    {
         $path = $this->app->langPath($locale);
 
         if (! File::isDirectory($path)) {
@@ -360,6 +375,115 @@ final readonly class Lingua
     }
 
     /**
+     * Apply fallback translations for all groups loaded in bulk.
+     *
+     * @param  array<string, mixed>  $translations
+     * @return array<string, mixed>
+     *
+     * @throws BindingResolutionException
+     */
+    private function applyFallbackForAllGroups(array $translations): array
+    {
+        $currentLocale = $this->getLocale();
+        $defaultLocale = $this->getDefaultLocale();
+
+        if ($defaultLocale === $currentLocale) {
+            return $translations;
+        }
+
+        $fallbackTranslations = $this->loadPhpTranslationsForLocale($defaultLocale);
+
+        if ($fallbackTranslations === []) {
+            return $translations;
+        }
+
+        return $this->mergeFallbackGroups($fallbackTranslations, $translations);
+    }
+
+    /**
+     * Merge fallback translations with current translations for PHP groups.
+     *
+     * @param  array<string, mixed>  $fallbackTranslations
+     * @param  array<string, mixed>  $translations
+     * @return array<string, mixed>
+     */
+    private function mergeFallbackGroups(array $fallbackTranslations, array $translations): array
+    {
+        foreach ($fallbackTranslations as $group => $fallbackGroupTranslations) {
+            if (! is_array($fallbackGroupTranslations)) {
+                continue;
+            }
+
+            if (! isset($translations[$group]) || ! is_array($translations[$group])) {
+                $translations[$group] = $fallbackGroupTranslations;
+
+                continue;
+            }
+
+            /** @var array<string, mixed> $groupTranslations */
+            $groupTranslations = $translations[$group];
+
+            $translations[$group] = array_replace_recursive($fallbackGroupTranslations, $groupTranslations);
+        }
+
+        return $translations;
+    }
+
+    /**
+     * Apply fallback translations for a single group when keys are missing.
+     *
+     * @param  array<string, mixed>  $translations
+     * @return array<string, mixed>
+     *
+     * @throws BindingResolutionException
+     */
+    private function applyFallbackForGroup(string $group, array $translations, string $currentLocale): array
+    {
+        $defaultLocale = $this->getDefaultLocale();
+
+        if ($defaultLocale === $currentLocale) {
+            return $translations;
+        }
+
+        $fallbackTranslations = $this->loadPhpTranslationGroup($defaultLocale, $group);
+
+        if ($fallbackTranslations === []) {
+            return $translations;
+        }
+
+        /** @var array<string, mixed> $merged */
+        $merged = array_replace_recursive($fallbackTranslations, $translations);
+
+        return $merged;
+    }
+
+    /**
+     * Apply fallback translations for JSON driver.
+     *
+     * @param  array<string, mixed>  $translations
+     * @return array<string, mixed>
+     *
+     * @throws BindingResolutionException
+     */
+    private function applyFallbackForJson(array $translations): array
+    {
+        $defaultLocale = $this->getDefaultLocale();
+        $currentLocale = $this->getLocale();
+
+        if ($defaultLocale === $currentLocale) {
+            return $translations;
+        }
+
+        $fallbackTranslations = $this->loadJsonTranslationsForLocale($defaultLocale);
+
+        if ($fallbackTranslations === []) {
+            return $translations;
+        }
+
+        return array_replace($fallbackTranslations, $translations);
+    }
+
+    /**
      * Load translations from JSON file at lang/{locale}.json.
      *
      * @return array<string, mixed>
@@ -370,6 +494,17 @@ final readonly class Lingua
     private function loadJsonTranslations(): array
     {
         $locale = $this->getLocale();
+
+        return $this->loadJsonTranslationsForLocale($locale);
+    }
+
+    /**
+     * Load JSON translations for a specific locale.
+     *
+     * @return array<string, mixed>
+     */
+    private function loadJsonTranslationsForLocale(string $locale): array
+    {
         $path = $this->app->langPath($locale.'.json');
 
         if (! File::exists($path)) {
@@ -445,6 +580,24 @@ final readonly class Lingua
         $locale = $session->get($sessionKey, $default);
 
         return $locale;
+    }
+
+    /**
+     * Resolve the default locale, falling back to app.locale when needed.
+     *
+     * @throws BindingResolutionException
+     */
+    private function getDefaultLocale(): string
+    {
+        /** @var ConfigRepository $config */
+        $config = $this->app->make(ConfigRepository::class);
+
+        /** @var string|null $default */
+        $default = $config->get('lingua.default');
+        /** @var string $locale */
+        $locale = $config->get('app.locale', 'en');
+
+        return $default ?? $locale;
     }
 
     /**

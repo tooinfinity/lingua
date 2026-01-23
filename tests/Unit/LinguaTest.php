@@ -60,11 +60,15 @@ describe('setLocale', function (): void {
             'lingua.resolvers.cookie.ttl_minutes' => 120,
         ]);
 
-        Illuminate\Support\Facades\Cookie::fake();
-
         $this->lingua->setLocale('fr');
 
-        Illuminate\Support\Facades\Cookie::assertQueued('lingua_locale', 'fr', 120);
+        $queued = app('cookie')->getQueuedCookies();
+
+        $cookie = collect($queued)->first(fn ($item): bool => $item->getName() === 'lingua_locale');
+
+        expect($cookie)->not->toBeNull()
+            ->and($cookie->getValue())->toBe('fr')
+            ->and($cookie->getExpiresTime())->toBeGreaterThan(time());
     });
 
     it('sets app locale', function (): void {
@@ -453,5 +457,26 @@ describe('Lingua Coverage Edge Cases', function (): void {
         expect($translations)->toBe([]);
 
         File::delete($langPath.'/bad.php');
+    });
+
+    it('skips non-array fallback groups in merge', function (): void {
+        $lingua = new Lingua($this->app);
+
+        $method = new ReflectionMethod(Lingua::class, 'mergeFallbackGroups');
+
+        $fallback = [
+            'common' => ['app' => 'Base'],
+            'invalid' => 'bad',
+        ];
+        $current = [
+            'common' => ['app' => 'Current'],
+        ];
+
+        /** @var array<string, mixed> $merged */
+        $merged = $method->invoke($lingua, $fallback, $current);
+
+        expect($merged)->toBe([
+            'common' => ['app' => 'Current'],
+        ]);
     });
 });
