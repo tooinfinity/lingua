@@ -10,6 +10,7 @@ use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\File;
 use TooInfinity\Lingua\Exceptions\UnsupportedLocaleException;
 use TooInfinity\Lingua\Support\LocaleResolverManager;
@@ -70,6 +71,8 @@ final readonly class Lingua
 
         $session->put($sessionKey, $normalizedLocale);
         $this->app->setLocale($normalizedLocale);
+
+        $this->persistLocaleCookie($config, $normalizedLocale);
     }
 
     /**
@@ -466,6 +469,28 @@ final readonly class Lingua
 
         // Otherwise use resolver config (with fallback to legacy for full backward compat)
         return $resolverKey ?? $legacyKey;
+    }
+
+    /**
+     * Persist locale to a cookie when enabled in config.
+     *
+     * @throws BindingResolutionException
+     */
+    private function persistLocaleCookie(ConfigRepository $config, string $locale): void
+    {
+        /** @var bool $enabled */
+        $enabled = $config->get('lingua.resolvers.cookie.persist_on_set', false);
+
+        if (! $enabled) {
+            return;
+        }
+
+        /** @var string $cookieName */
+        $cookieName = $config->get('lingua.resolvers.cookie.key', 'lingua_locale');
+        /** @var int $ttl */
+        $ttl = $config->get('lingua.resolvers.cookie.ttl_minutes', 60 * 24 * 30);
+
+        Cookie::queue($cookieName, $locale, $ttl);
     }
 
     /**

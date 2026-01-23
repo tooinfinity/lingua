@@ -160,7 +160,7 @@ __('messages.greeting', { name: 'John' }) // "Hello, John!"
 use TooInfinity\Lingua\Facades\Lingua;
 
 Lingua::getLocale();           // Get current locale
-Lingua::setLocale('fr');       // Set locale
+Lingua::setLocale('fr');       // Set locale (optionally persists cookie)
 Lingua::supportedLocales();    // Get supported locales
 Lingua::translations();        // Get all translations
 ```

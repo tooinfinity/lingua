@@ -68,6 +68,8 @@ return [
         'cookie' => [
             'enabled' => true,         // Enable/disable this resolver
             'key' => 'lingua_locale',  // Cookie name
+            'persist_on_set' => false, // Set cookie when Lingua::setLocale() is called
+            'ttl_minutes' => 60 * 24 * 30, // Cookie lifetime in minutes (30 days)
         ],
     ],
 

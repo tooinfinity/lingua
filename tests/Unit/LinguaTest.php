@@ -52,6 +52,21 @@ describe('setLocale', function (): void {
         expect(session()->get('lingua.locale'))->toBe('fr');
     });
 
+    it('queues locale cookie when persist_on_set is enabled', function (): void {
+        config([
+            'lingua.locales' => ['en', 'fr'],
+            'lingua.resolvers.cookie.persist_on_set' => true,
+            'lingua.resolvers.cookie.key' => 'lingua_locale',
+            'lingua.resolvers.cookie.ttl_minutes' => 120,
+        ]);
+
+        Illuminate\Support\Facades\Cookie::fake();
+
+        $this->lingua->setLocale('fr');
+
+        Illuminate\Support\Facades\Cookie::assertQueued('lingua_locale', 'fr', 120);
+    });
+
     it('sets app locale', function (): void {
         config(['lingua.locales' => ['en', 'fr', 'de']]);
 
