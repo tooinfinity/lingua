@@ -4,352 +4,73 @@ declare(strict_types=1);
 
 use Illuminate\Http\Request;
 use TooInfinity\Lingua\Lingua;
-use TooInfinity\Lingua\Support\LocaleResolverManager;
 
 beforeEach(function (): void {
     $this->lingua = app(Lingua::class);
-    $this->manager = app(LocaleResolverManager::class);
 });
 
-describe('LocaleResolverManager', function (): void {
-    it('returns available resolvers', function (): void {
-        $resolvers = $this->manager->getAvailableResolvers();
-
-        expect($resolvers)->toContain('session')
-            ->toContain('cookie');
-    });
-
-    it('returns configured resolution order', function (): void {
-        config(['lingua.resolution_order' => ['cookie', 'session']]);
-
-        $manager = app(LocaleResolverManager::class);
-
-        expect($manager->getResolutionOrder())->toBe(['cookie', 'session']);
-    });
-
-    it('creates resolver instances', function (): void {
-        // Ensure all resolvers are enabled for this test
-        config(['lingua.resolvers.session.enabled' => true]);
-        config(['lingua.resolvers.cookie.enabled' => true]);
-
-        $manager = app(LocaleResolverManager::class);
-
-        expect($manager->createResolver('session'))->toBeInstanceOf(
-            TooInfinity\Lingua\Support\Resolvers\SessionResolver::class
-        );
-        expect($manager->createResolver('cookie'))->toBeInstanceOf(
-            TooInfinity\Lingua\Support\Resolvers\CookieResolver::class
-        );
-    });
-
-    it('returns null for disabled resolver', function (): void {
-        config(['lingua.resolvers.session.enabled' => false]);
-
-        $manager = app(LocaleResolverManager::class);
-
-        expect($manager->createResolver('session'))->toBeNull();
-    });
-
-    it('returns null for unknown resolver', function (): void {
-        expect($this->manager->createResolver('unknown'))->toBeNull();
-    });
-
-    it('creates custom resolver class when configured', function (): void {
-        // Create a custom resolver class for testing
-        config(['lingua.resolvers.session.enabled' => true]);
-        config(['lingua.resolvers.session.class' => TooInfinity\Lingua\Support\Resolvers\CookieResolver::class]);
-
-        $manager = app(LocaleResolverManager::class);
-
-        // Should create the custom class instead of SessionResolver
-        expect($manager->createResolver('session'))->toBeInstanceOf(
-            TooInfinity\Lingua\Support\Resolvers\CookieResolver::class
-        );
-    });
-
-    it('skips empty string locales during resolution', function (): void {
+describe('Locale resolution', function (): void {
+    it('uses the session locale when available', function (): void {
         config(['lingua.locales' => ['en', 'fr']]);
-        config(['lingua.resolution_order' => ['cookie', 'session']]);
-        config(['lingua.resolvers.cookie.enabled' => true]);
-        config(['lingua.default' => 'en']);
-
-        // Set session to a valid locale
         session()->put('lingua.locale', 'fr');
 
-        // Cookie is empty string
         $request = Request::create('/');
-        $request->cookies->set('lingua_locale', '');
+        $request->cookies->set('lingua_locale', 'en');
 
-        $lingua = app(Lingua::class);
-
-        // Empty string from cookie should be skipped, falls back to session
-        expect($lingua->getLocale($request))->toBe('fr');
+        expect($this->lingua->getLocale($request))->toBe('fr');
     });
 
-    it('skips empty string locales returned by resolveAll', function (): void {
-        // Create an anonymous class that returns empty strings in resolveAll
-        $emptyStringResolver = new class implements TooInfinity\Lingua\Contracts\LocaleResolverInterface
-        {
-            public function resolve(Request $request): string
-            {
-                return '';
-            }
+    it('uses the cookie locale when session is empty and request provided', function (): void {
+        config(['lingua.locales' => ['en', 'fr']]);
 
-            public function resolveAll(Request $request): array
-            {
-                return ['', '', 'fr']; // Returns empty strings followed by valid locale
-            }
-        };
-
-        // Bind the custom resolver
-        app()->instance('test.empty_resolver', $emptyStringResolver);
-
-        config(['lingua.locales' => ['en', 'fr', 'de']]);
-        config(['lingua.resolution_order' => ['custom', 'session']]);
-        config(['lingua.resolvers.custom.enabled' => true]);
-        config(['lingua.resolvers.custom.class' => $emptyStringResolver::class]);
-        config(['lingua.default' => 'en']);
-
-        // Bind the resolver class
-        app()->bind($emptyStringResolver::class, fn (): object => $emptyStringResolver);
-
-        $manager = app(LocaleResolverManager::class);
-        $request = Request::create('/');
-
-        $result = $manager->resolve(
-            $request,
-            fn (string $locale): bool => in_array($locale, ['en', 'fr', 'de']),
-            fn (string $locale): string => $locale
-        );
-
-        // Should skip empty strings and return 'fr'
-        expect($result)->toBe('fr');
-    });
-});
-
-describe('Resolution Order Priority', function (): void {
-    beforeEach(function (): void {
-        config(['lingua.locales' => ['en', 'fr', 'de', 'es']]);
-    });
-
-    it('uses first resolver that returns a supported locale', function (): void {
-        config(['lingua.resolution_order' => ['cookie', 'session']]);
-
-        session()->put('lingua.locale', 'de');
         $request = Request::create('/');
         $request->cookies->set('lingua_locale', 'fr');
 
-        // Cookie comes first, should return 'fr'
         expect($this->lingua->getLocale($request))->toBe('fr');
     });
 
-    it('falls back to next resolver when first returns unsupported locale', function (): void {
-        config(['lingua.resolution_order' => ['cookie', 'session']]);
-        config(['lingua.locales' => ['en', 'de']]);
+    it('ignores cookie when no request is provided', function (): void {
+        config(['lingua.locales' => ['en', 'fr']]);
+        session()->put('lingua.locale', 'en');
 
-        session()->put('lingua.locale', 'de');
-        $request = Request::create('/');
-        $request->cookies->set('lingua_locale', 'invalid');
-
-        // Cookie returns 'invalid' which is not supported, falls back to session
-        expect($this->lingua->getLocale($request))->toBe('de');
+        expect($this->lingua->getLocale())->toBe('en');
     });
 
-    it('falls back to next resolver when first returns null', function (): void {
-        config(['lingua.resolution_order' => ['cookie', 'session']]);
+    it('falls back to default locale when no candidates are valid', function (): void {
+        config(['lingua.locales' => ['en', 'fr']]);
+        config(['lingua.default' => 'fr']);
 
-        session()->put('lingua.locale', 'fr');
         $request = Request::create('/');
+        $request->cookies->set('lingua_locale', 'de');
 
         expect($this->lingua->getLocale($request))->toBe('fr');
-    });
-
-    it('falls back to default when no resolver returns valid locale', function (): void {
-        config(['lingua.resolution_order' => ['session']]);
-        config(['lingua.default' => 'es']);
-
-        $request = Request::create('/');
-
-        expect($this->lingua->getLocale($request))->toBe('es');
     });
 
     it('falls back to app locale when default is null', function (): void {
-        config(['lingua.resolution_order' => ['session']]);
         config(['lingua.default' => null]);
         config(['app.locale' => 'de']);
 
-        $request = Request::create('/');
-
-        expect($this->lingua->getLocale($request))->toBe('de');
-    });
-
-    it('respects session before cookie in default order', function (): void {
-        config(['lingua.resolution_order' => ['session', 'cookie']]);
-
-        session()->put('lingua.locale', 'fr');
-        $request = Request::create('/');
-        $request->cookies->set('lingua_locale', 'de');
-
-        expect($this->lingua->getLocale($request))->toBe('fr');
-    });
-
-    it('uses cookie when session is empty', function (): void {
-        config(['lingua.resolution_order' => ['session', 'cookie']]);
-
-        $request = Request::create('/');
-        $request->cookies->set('lingua_locale', 'de');
-
-        expect($this->lingua->getLocale($request))->toBe('de');
-    });
-});
-
-describe('Backward Compatibility', function (): void {
-    it('works without request parameter (session-only)', function (): void {
-        session()->put('lingua.locale', 'fr');
-
-        expect($this->lingua->getLocale())->toBe('fr');
-    });
-
-    it('uses default when session is empty without request', function (): void {
-        config(['lingua.default' => 'es']);
-
-        expect($this->lingua->getLocale())->toBe('es');
-    });
-
-    it('uses legacy session_key config', function (): void {
-        config(['lingua.session_key' => 'legacy.locale.key']);
-        config(['lingua.resolvers.session.key' => null]);
-
-        session()->put('legacy.locale.key', 'de');
-
         expect($this->lingua->getLocale())->toBe('de');
     });
 
-    it('prefers new resolver config over legacy session_key', function (): void {
-        config(['lingua.session_key' => 'legacy.key']);
-        config(['lingua.resolvers.session.key' => 'new.key']);
+    it('normalizes locales from session and cookie', function (): void {
+        config(['lingua.locales' => ['en_US', 'fr']]);
 
-        session()->put('legacy.key', 'fr');
-        session()->put('new.key', 'de');
-
-        expect($this->lingua->getLocale())->toBe('de');
-    });
-});
-
-describe('Locale Normalization in Resolution', function (): void {
-    beforeEach(function (): void {
-        config(['lingua.locales' => ['en_US', 'fr', 'de']]);
-    });
-
-});
-
-describe('Empty Resolution Order', function (): void {
-    it('falls back to default with empty resolution order', function (): void {
-        config(['lingua.resolution_order' => []]);
-        config(['lingua.default' => 'fr']);
-
-        $request = Request::create('/?locale=de');
-
-        expect($this->lingua->getLocale($request))->toBe('fr');
-    });
-});
-
-describe('Resolver Enable/Disable', function (): void {
-    it('skips disabled resolvers', function (): void {
-        config(['lingua.locales' => ['en', 'fr', 'de']]);
-        config(['lingua.resolution_order' => ['cookie', 'session']]);
-        config(['lingua.resolvers.cookie.enabled' => false]);
-        config(['lingua.default' => 'en']);
-
-        session()->put('lingua.locale', 'de');
+        session()->put('lingua.locale', 'EN-us');
 
         $request = Request::create('/');
-        $request->cookies->set('lingua_locale', 'fr');
+        $request->cookies->set('lingua_locale', 'FR');
 
-        // Cookie resolver is disabled, so it should use session value
-        expect($this->lingua->getLocale($request))->toBe('de');
+        expect($this->lingua->getLocale($request))->toBe('en_US');
     });
 
-    it('uses resolver when enabled', function (): void {
-        config(['lingua.locales' => ['en', 'fr', 'de']]);
-        config(['lingua.resolution_order' => ['cookie', 'session']]);
-        config(['lingua.resolvers.cookie.enabled' => true]);
-        config(['lingua.default' => 'en']);
-
-        session()->put('lingua.locale', 'de');
-
-        $request = Request::create('/');
-        $request->cookies->set('lingua_locale', 'fr');
-
-        // Cookie resolver is enabled, so it should use cookie value
-        expect($this->lingua->getLocale($request))->toBe('fr');
-    });
-
-    it('defaults to enabled when not specified', function (): void {
+    it('uses cookie when session locale is unsupported', function (): void {
         config(['lingua.locales' => ['en', 'fr']]);
-        config(['lingua.resolution_order' => ['cookie']]);
-        // Remove the enabled key to test default behavior
-        config(['lingua.resolvers.cookie' => ['key' => 'test_locale']]);
-        config(['lingua.default' => 'en']);
-
-        $request = Request::create('/');
-        $request->cookies->set('test_locale', 'fr');
-
-        // Should default to enabled
-        expect($this->lingua->getLocale($request))->toBe('fr');
-    });
-
-    it('can disable all resolvers and fall back to default', function (): void {
-        config(['lingua.locales' => ['en', 'fr', 'de']]);
-        config(['lingua.resolution_order' => ['session', 'cookie']]);
-        config(['lingua.resolvers.session.enabled' => false]);
-        config(['lingua.resolvers.cookie.enabled' => false]);
-        config(['lingua.default' => 'de']);
-
-        session()->put('lingua.locale', 'fr');
+        session()->put('lingua.locale', 'de');
 
         $request = Request::create('/');
         $request->cookies->set('lingua_locale', 'fr');
 
-        // All resolvers disabled, should fall back to default
-        expect($this->lingua->getLocale($request))->toBe('de');
-    });
-
-    it('can selectively enable resolvers in the middle of the order', function (): void {
-        config(['lingua.locales' => ['en', 'fr', 'de', 'es']]);
-        config(['lingua.resolution_order' => ['cookie', 'session']]);
-        config(['lingua.resolvers.cookie.enabled' => false]);
-        config(['lingua.resolvers.session.enabled' => true]);
-        config(['lingua.default' => 'en']);
-
-        session()->put('lingua.locale', 'de');
-
-        $request = Request::create('/');
-        $request->cookies->set('lingua_locale', 'es');
-
-        // Only session is enabled
-        expect($this->lingua->getLocale($request))->toBe('de');
-    });
-
-    it('provides list of enabled resolvers', function (): void {
-        config(['lingua.resolution_order' => ['session', 'cookie']]);
-        config(['lingua.resolvers.session.enabled' => true]);
-        config(['lingua.resolvers.cookie.enabled' => true]);
-
-        $manager = app(LocaleResolverManager::class);
-
-        $enabled = $manager->getEnabledResolvers();
-
-        expect($enabled)->toBe(['session', 'cookie']);
-    });
-
-    it('can check if specific resolver is enabled', function (): void {
-        config(['lingua.resolvers.session.enabled' => true]);
-        config(['lingua.resolvers.cookie.enabled' => false]);
-
-        $manager = app(LocaleResolverManager::class);
-
-        expect($manager->isResolverEnabled('session'))->toBeTrue();
-        expect($manager->isResolverEnabled('cookie'))->toBeFalse();
+        expect($this->lingua->getLocale($request))->toBe('fr');
     });
 });

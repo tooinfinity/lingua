@@ -22,7 +22,10 @@ describe('getLocale', function (): void {
     });
 
     it('uses custom session key from config', function (): void {
-        config(['lingua.session_key' => 'custom.locale.key']);
+        config([
+            'lingua.resolvers.session.key' => 'custom.locale.key',
+            'lingua.locales' => ['en', 'de'],
+        ]);
         session()->put('custom.locale.key', 'de');
 
         expect($this->lingua->getLocale())->toBe('de');
@@ -80,7 +83,7 @@ describe('setLocale', function (): void {
     });
 
     it('uses custom session key from config', function (): void {
-        config(['lingua.session_key' => 'my.custom.key']);
+        config(['lingua.resolvers.session.key' => 'my.custom.key']);
         config(['lingua.locales' => ['en', 'it']]);
 
         $this->lingua->setLocale('it');

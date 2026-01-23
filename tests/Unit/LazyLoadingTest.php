@@ -195,35 +195,8 @@ describe('translationsFor', function (): void {
     });
 });
 
-describe('translations with lazy loading enabled', function (): void {
-    it('loads only default groups when lazy loading is enabled', function (): void {
-        config([
-            'lingua.lazy_loading.enabled' => true,
-            'lingua.lazy_loading.default_groups' => ['common', 'auth'],
-        ]);
-
-        $translations = $this->lingua->translations();
-
-        expect($translations)->toHaveKey('common')
-            ->toHaveKey('auth')
-            ->not->toHaveKey('validation')
-            ->not->toHaveKey('dashboard');
-    });
-
-    it('returns empty array when no default groups configured', function (): void {
-        config([
-            'lingua.lazy_loading.enabled' => true,
-            'lingua.lazy_loading.default_groups' => [],
-        ]);
-
-        $translations = $this->lingua->translations();
-
-        expect($translations)->toBe([]);
-    });
-
-    it('loads all translations when lazy loading is disabled', function (): void {
-        config(['lingua.lazy_loading.enabled' => false]);
-
+describe('translations for php driver', function (): void {
+    it('loads all translations', function (): void {
         $translations = $this->lingua->translations();
 
         expect($translations)->toHaveKey('common')
@@ -236,7 +209,6 @@ describe('translations with lazy loading enabled', function (): void {
         config([
             'lingua.locales' => ['en', 'fr'],
             'lingua.default' => 'en',
-            'lingua.lazy_loading.enabled' => false,
         ]);
 
         File::ensureDirectoryExists(lang_path('fr'));
@@ -256,7 +228,6 @@ describe('translations with lazy loading enabled', function (): void {
         config([
             'lingua.locales' => ['en', 'fr'],
             'lingua.default' => 'en',
-            'lingua.lazy_loading.enabled' => false,
         ]);
 
         File::ensureDirectoryExists(lang_path('fr'));
@@ -279,8 +250,6 @@ describe('translations with json driver', function (): void {
     it('always loads all translations with json driver regardless of lazy loading', function (): void {
         config([
             'lingua.translation_driver' => 'json',
-            'lingua.lazy_loading.enabled' => true,
-            'lingua.lazy_loading.default_groups' => ['common'],
         ]);
 
         // Create JSON translations

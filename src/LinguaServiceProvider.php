@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace TooInfinity\Lingua;
 
-use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Foundation\AliasLoader;
 use Illuminate\Foundation\Application;
@@ -13,7 +12,6 @@ use Illuminate\Support\ServiceProvider;
 use TooInfinity\Lingua\Console\InstallCommand;
 use TooInfinity\Lingua\Facades\Lingua as LinguaFacade;
 use TooInfinity\Lingua\Http\Middleware\LinguaMiddleware;
-use TooInfinity\Lingua\Support\LocaleResolverManager;
 
 final class LinguaServiceProvider extends ServiceProvider
 {
@@ -22,11 +20,6 @@ final class LinguaServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/lingua.php', 'lingua');
 
         $this->app->singleton(Lingua::class, fn (Application $app): Lingua => new Lingua($app));
-
-        $this->app->singleton(LocaleResolverManager::class, fn (Application $app): LocaleResolverManager => new LocaleResolverManager(
-            $app,
-            $app->make(ConfigRepository::class)
-        ));
 
         // Register facade alias
         $loader = AliasLoader::getInstance();

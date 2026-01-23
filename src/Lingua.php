@@ -13,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\File;
 use TooInfinity\Lingua\Exceptions\UnsupportedLocaleException;
-use TooInfinity\Lingua\Support\LocaleResolverManager;
 
 final readonly class Lingua
 {
@@ -24,9 +23,6 @@ final readonly class Lingua
     /**
      * Get the current locale.
      *
-     * When called without a request, falls back to session-based resolution
-     * for backward compatibility.
-     *
      * @throws BindingResolutionException
      */
     public function getLocale(?Request $request = null): string
@@ -34,20 +30,13 @@ final readonly class Lingua
         $this->app->make(ConfigRepository::class);
 
         $default = $this->getDefaultLocale();
+        $resolvedLocale = $this->resolveLocale($request);
 
-        // If a request is provided, use the resolver manager
-        if ($request instanceof Request) {
-            $resolvedLocale = $this->resolveLocaleFromRequest($request);
-
-            if ($resolvedLocale !== null) {
-                return $resolvedLocale;
-            }
-
-            return $this->normalizeLocale($default);
+        if ($resolvedLocale !== null) {
+            return $resolvedLocale;
         }
 
-        // Backward compatibility: session-only resolution when no request provided
-        return $this->getLocaleFromSession($default);
+        return $this->normalizeLocale($default);
     }
 
     /**
@@ -62,7 +51,7 @@ final readonly class Lingua
         $session = $this->app->make(Session::class);
 
         /** @var string $sessionKey */
-        $sessionKey = $config->get('lingua.session_key', 'lingua.locale');
+        $sessionKey = $config->get('lingua.resolvers.session.key', 'lingua.locale');
 
         $normalizedLocale = $this->normalizeLocale($locale);
         $this->validateLocale($normalizedLocale);
@@ -179,36 +168,9 @@ final readonly class Lingua
             return $this->applyFallbackForJson($translations);
         }
 
-        // Check if lazy loading is enabled
-        /** @var bool $lazyLoadingEnabled */
-        $lazyLoadingEnabled = $config->get('lingua.lazy_loading.enabled', false);
-
-        if ($lazyLoadingEnabled) {
-            /** @var array<string> $defaultGroups */
-            $defaultGroups = $config->get('lingua.lazy_loading.default_groups', []);
-
-            return $this->translationsFor($defaultGroups);
-        }
-
         $translations = $this->loadPhpTranslations();
 
         return $this->applyFallbackForAllGroups($translations);
-    }
-
-    /**
-     * Check if lazy loading is enabled.
-     *
-     * @throws BindingResolutionException
-     */
-    public function isLazyLoadingEnabled(): bool
-    {
-        /** @var ConfigRepository $config */
-        $config = $this->app->make(ConfigRepository::class);
-
-        /** @var bool $enabled */
-        $enabled = $config->get('lingua.lazy_loading.enabled', false);
-
-        return $enabled;
     }
 
     /**
@@ -547,26 +509,11 @@ final readonly class Lingua
     }
 
     /**
-     * Resolve locale from request using the configured resolution order.
-     */
-    private function resolveLocaleFromRequest(Request $request): ?string
-    {
-        /** @var LocaleResolverManager $manager */
-        $manager = $this->app->make(LocaleResolverManager::class);
-
-        return $manager->resolve(
-            $request,
-            $this->isLocaleSupported(...),
-            $this->normalizeLocale(...)
-        );
-    }
-
-    /**
-     * Get locale from session (backward compatibility method).
+     * Resolve locale from session/cookie.
      *
      * @throws BindingResolutionException
      */
-    private function getLocaleFromSession(string $default): string
+    private function resolveLocale(?Request $request = null): ?string
     {
         /** @var ConfigRepository $config */
         $config = $this->app->make(ConfigRepository::class);
@@ -574,12 +521,37 @@ final readonly class Lingua
         /** @var Session $session */
         $session = $this->app->make(Session::class);
 
-        $sessionKey = $this->getSessionKey($config);
+        /** @var string $sessionKey */
+        $sessionKey = $config->get('lingua.resolvers.session.key', 'lingua.locale');
+        /** @var string|null $sessionLocale */
+        $sessionLocale = $session->get($sessionKey);
 
-        /** @var string $locale */
-        $locale = $session->get($sessionKey, $default);
+        $candidates = [];
 
-        return $locale;
+        if (is_string($sessionLocale) && $sessionLocale !== '') {
+            $candidates[] = $sessionLocale;
+        }
+
+        if ($request instanceof Request) {
+            /** @var string $cookieKey */
+            $cookieKey = $config->get('lingua.resolvers.cookie.key', 'lingua_locale');
+            /** @var string|null $cookieLocale */
+            $cookieLocale = $request->cookie($cookieKey);
+
+            if (is_string($cookieLocale) && $cookieLocale !== '') {
+                $candidates[] = $cookieLocale;
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            $normalized = $this->normalizeLocale($candidate);
+
+            if ($this->isLocaleSupported($normalized)) {
+                return $normalized;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -598,30 +570,6 @@ final readonly class Lingua
         $locale = $config->get('app.locale', 'en');
 
         return $default ?? $locale;
-    }
-
-    /**
-     * Get the session key for storing locale.
-     *
-     * Checks legacy config first for backward compatibility, then falls back to new resolver config.
-     */
-    private function getSessionKey(ConfigRepository $config): string
-    {
-        // Check if legacy session_key has been customized (different from default)
-        /** @var string $legacyKey */
-        $legacyKey = $config->get('lingua.session_key', 'lingua.locale');
-
-        // Check the new resolver config
-        /** @var string|null $resolverKey */
-        $resolverKey = $config->get('lingua.resolvers.session.key');
-
-        // If legacy key was customized and resolver key is still at default, use legacy
-        if ($legacyKey !== 'lingua.locale' && $resolverKey === 'lingua.locale') {
-            return $legacyKey;
-        }
-
-        // Otherwise use resolver config (with fallback to legacy for full backward compat)
-        return $resolverKey ?? $legacyKey;
     }
 
     /**

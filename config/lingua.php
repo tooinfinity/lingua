@@ -26,47 +26,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Session Key (Legacy)
-    |--------------------------------------------------------------------------
-    |
-    | Legacy configuration option. Use 'resolvers.session.key' instead.
-    | This is kept for backward compatibility.
-    |
-    */
-    'session_key' => 'lingua.locale',
-
-    /*
-    |--------------------------------------------------------------------------
-    | Locale Resolution Order
-    |--------------------------------------------------------------------------
-    |
-    | The order in which locale resolvers are checked. The first resolver
-    | that returns a valid, supported locale will be used.
-    |
-    | Available resolvers: 'session', 'cookie'
-    |
-    */
-    'resolution_order' => ['session', 'cookie'],
-
-    /*
-    |--------------------------------------------------------------------------
     | Resolver Configuration
     |--------------------------------------------------------------------------
     |
     | Configuration options for each locale resolver.
-    | Each resolver can be enabled/disabled individually using the 'enabled' key.
-    | Set 'enabled' => false to temporarily disable a resolver without removing
-    | it from the resolution_order array.
     |
     */
     'resolvers' => [
         'session' => [
-            'enabled' => true,        // Enable/disable this resolver
             'key' => 'lingua.locale', // Session key to store the locale
         ],
 
         'cookie' => [
-            'enabled' => true,         // Enable/disable this resolver
             'key' => 'lingua_locale',  // Cookie name
             'persist_on_set' => false, // Set cookie when Lingua::setLocale() is called
             'ttl_minutes' => 60 * 24 * 30, // Cookie lifetime in minutes (30 days)
@@ -122,43 +93,6 @@ return [
     |
     */
     'translation_driver' => 'php',
-
-    /*
-    |--------------------------------------------------------------------------
-    | Lazy Loading Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Configure lazy/partial translation loading to improve performance for
-    | applications with many translation files. When enabled, only specified
-    | translation groups are loaded instead of all translations.
-    |
-    | Note: Lazy loading only works with the 'php' translation driver.
-    | JSON translations are loaded as a single file and cannot be split.
-    |
-    */
-    'lazy_loading' => [
-        /*
-        |--------------------------------------------------------------------------
-        | Enable Lazy Loading
-        |--------------------------------------------------------------------------
-        |
-        | Set to true to enable lazy loading of translations. When disabled,
-        | all translations are loaded at once (default behavior).
-        |
-        */
-        'enabled' => false,
-
-        /*
-        |--------------------------------------------------------------------------
-        | Default Groups
-        |--------------------------------------------------------------------------
-        |
-        | Translation groups that are always loaded regardless of route.
-        | These are typically common translations used across the application.
-        |
-        */
-        'default_groups' => [],
-    ],
 
     /*
     |--------------------------------------------------------------------------

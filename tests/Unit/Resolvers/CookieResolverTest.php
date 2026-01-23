@@ -46,4 +46,17 @@ describe('CookieResolver', function (): void {
 
         expect($this->resolver->resolve($request))->toBe('en-US');
     });
+
+    it('returns locale array from resolveAll', function (): void {
+        $request = Request::create('/');
+        $request->cookies->set('lingua_locale', 'fr');
+
+        expect($this->resolver->resolveAll($request))->toBe(['fr']);
+    });
+
+    it('returns empty array from resolveAll when cookie is missing', function (): void {
+        $request = Request::create('/');
+
+        expect($this->resolver->resolveAll($request))->toBe([]);
+    });
 });

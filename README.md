@@ -121,19 +121,18 @@ function LocaleSwitcher() {
 }
 ```
 
-## Lazy Loading (Optional)
+## Translation Groups (Optional)
 
-Load only the translations needed for each request instead of all at once.
+Load only the translations needed for a specific request by passing group names to the middleware.
+When no groups are provided, Lingua shares all translations.
 
 ```php
-// config/lingua.php
-'lazy_loading' => [
-    'enabled' => true,
-    'default_groups' => ['common', 'validation'], // Always loaded
-],
+Route::middleware(['web', 'lingua:common,validation'])->get('/dashboard', function () {
+    // ...
+});
 ```
 
-When enabled, Lingua only loads the configured default groups unless you request specific groups via `Lingua::translationsFor()` or middleware parameters.
+You can also load specific groups manually via `Lingua::translationsFor(['common', 'validation'])`.
 
 ## API Reference
 

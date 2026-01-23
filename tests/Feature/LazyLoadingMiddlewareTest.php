@@ -32,10 +32,8 @@ afterEach(function (): void {
     File::deleteDirectory(lang_path());
 });
 
-describe('middleware without lazy loading', function (): void {
-    it('loads all translations when lazy loading is disabled', function (): void {
-        config(['lingua.lazy_loading.enabled' => false]);
-
+describe('middleware translations', function (): void {
+    it('loads all translations by default', function (): void {
         $response = $this->get('/test-all');
 
         $response->assertOk();
@@ -47,34 +45,8 @@ describe('middleware without lazy loading', function (): void {
             ->toHaveKey('dashboard')
             ->toHaveKey('validation');
     });
-});
-
-describe('middleware with lazy loading enabled', function (): void {
-    it('loads only default groups when no route groups specified', function (): void {
-        config([
-            'lingua.lazy_loading.enabled' => true,
-            'lingua.lazy_loading.default_groups' => ['common'],
-        ]);
-
-        $response = $this->get('/test-all');
-
-        $response->assertOk();
-
-        $translations = $response->json('lingua.translations');
-
-        expect($translations)->toHaveKey('common')
-            ->not->toHaveKey('auth')
-            ->not->toHaveKey('dashboard')
-            ->not->toHaveKey('validation');
-    });
 
     it('loads route-specific groups via middleware parameters', function (): void {
-        config([
-            'lingua.lazy_loading.enabled' => true,
-            'lingua.lazy_loading.default_groups' => ['common'],
-        ]);
-
-        // Register route with specific groups
         Route::middleware(['web', LinguaMiddleware::class.':dashboard,auth'])->get('/test-specific', function () {
             $shared = Inertia::getShared();
             $linguaData = isset($shared['lingua']) && is_callable($shared['lingua'])
@@ -90,50 +62,13 @@ describe('middleware with lazy loading enabled', function (): void {
 
         $translations = $response->json('lingua.translations');
 
-        // Should have default + route-specific groups
-        expect($translations)->toHaveKey('common')
-            ->toHaveKey('auth')
+        expect($translations)->toHaveKey('auth')
             ->toHaveKey('dashboard')
+            ->not->toHaveKey('common')
             ->not->toHaveKey('validation');
-    });
-
-    it('merges default groups with route groups without duplicates', function (): void {
-        config([
-            'lingua.lazy_loading.enabled' => true,
-            'lingua.lazy_loading.default_groups' => ['common', 'auth'],
-        ]);
-
-        // Route specifies 'auth' again - should not duplicate
-        Route::middleware(['web', LinguaMiddleware::class.':auth,dashboard'])->get('/test-merge', function () {
-            $shared = Inertia::getShared();
-            $linguaData = isset($shared['lingua']) && is_callable($shared['lingua'])
-                ? $shared['lingua']()
-                : ($shared['lingua'] ?? null);
-
-            return response()->json(['lingua' => $linguaData]);
-        });
-
-        $response = $this->get('/test-merge');
-
-        $response->assertOk();
-
-        $translations = $response->json('lingua.translations');
-
-        expect($translations)->toHaveKey('common')
-            ->toHaveKey('auth')
-            ->toHaveKey('dashboard')
-            ->not->toHaveKey('validation');
-
-        // Verify auth is only included once (as a key)
-        expect(array_keys($translations))->toBe(['common', 'auth', 'dashboard']);
     });
 
     it('uses lingua middleware alias with parameters', function (): void {
-        config([
-            'lingua.lazy_loading.enabled' => true,
-            'lingua.lazy_loading.default_groups' => [],
-        ]);
-
         Route::middleware(['web', 'lingua:validation'])->get('/test-alias', function () {
             $shared = Inertia::getShared();
             $linguaData = isset($shared['lingua']) && is_callable($shared['lingua'])
@@ -157,12 +92,7 @@ describe('middleware with lazy loading enabled', function (): void {
 });
 
 describe('middleware still shares all lingua data', function (): void {
-    it('shares locale, locales, direction, and isRtl with lazy loading', function (): void {
-        config([
-            'lingua.lazy_loading.enabled' => true,
-            'lingua.lazy_loading.default_groups' => ['common'],
-        ]);
-
+    it('shares locale, locales, direction, and isRtl', function (): void {
         $response = $this->get('/test-all');
 
         $response->assertOk();

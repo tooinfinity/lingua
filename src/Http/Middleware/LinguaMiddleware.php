@@ -38,7 +38,6 @@ final readonly class LinguaMiddleware
 
         app()->setLocale($locale);
 
-        // Store middleware groups for later use in the lazy callback
         $middlewareGroups = $groups;
 
         Inertia::share('lingua', fn (): array => [
@@ -53,7 +52,7 @@ final readonly class LinguaMiddleware
     }
 
     /**
-     * Resolve translations based on configuration and middleware groups.
+     * Resolve translations based on middleware groups.
      *
      * @param  array<string>  $middlewareGroups  Groups specified via middleware parameters
      * @return array<string, mixed>
@@ -63,23 +62,10 @@ final readonly class LinguaMiddleware
      */
     private function resolveTranslations(array $middlewareGroups): array
     {
-        // If lazy loading is disabled, load all translations
-        if (! $this->lingua->isLazyLoadingEnabled()) {
+        if ($middlewareGroups === []) {
             return $this->lingua->translations();
         }
 
-        // Get default groups
-        /** @var array<string> $defaultGroups */
-        $defaultGroups = config('lingua.lazy_loading.default_groups', []);
-
-        // If middleware groups are specified, use them (explicit override)
-        if ($middlewareGroups !== []) {
-            $allGroups = array_unique(array_merge($defaultGroups, $middlewareGroups));
-
-            return $this->lingua->translationsFor($allGroups);
-        }
-
-        // Return default groups only (page detection happens in response handling)
-        return $this->lingua->translationsFor($defaultGroups);
+        return $this->lingua->translationsFor($middlewareGroups);
     }
 }

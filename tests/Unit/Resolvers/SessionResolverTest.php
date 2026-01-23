@@ -42,4 +42,18 @@ describe('SessionResolver', function (): void {
 
         expect($resolver->resolve($request))->toBeNull();
     });
+
+    it('returns locale array from resolveAll', function (): void {
+        session()->put('lingua.locale', 'fr');
+
+        $request = Request::create('/');
+
+        expect($this->resolver->resolveAll($request))->toBe(['fr']);
+    });
+
+    it('returns empty array from resolveAll when session is empty', function (): void {
+        $request = Request::create('/');
+
+        expect($this->resolver->resolveAll($request))->toBe([]);
+    });
 });
