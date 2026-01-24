@@ -12,13 +12,17 @@ use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\File;
+use TooInfinity\Lingua\Contracts\LocaleResolverInterface;
 use TooInfinity\Lingua\Exceptions\UnsupportedLocaleException;
+use TooInfinity\Lingua\Support\Resolvers\CookieResolver;
+use TooInfinity\Lingua\Support\Resolvers\SessionResolver;
 
 final readonly class Lingua
 {
-    public function __construct(
-        private Application $app
-    ) {}
+    /**
+     * @param  array<LocaleResolverInterface>|null  $resolvers
+     */
+    public function __construct(private Application $app, private ?array $resolvers = null) {}
 
     /**
      * Get the current locale.
@@ -509,49 +513,53 @@ final readonly class Lingua
     }
 
     /**
-     * Resolve locale from session/cookie.
+     * Resolve locale using configured resolver classes.
+     *
+     * Uses SessionResolver and CookieResolver in order of priority.
+     * Returns the first supported locale found, or null if none.
      *
      * @throws BindingResolutionException
      */
     private function resolveLocale(?Request $request = null): ?string
     {
-        /** @var ConfigRepository $config */
-        $config = $this->app->make(ConfigRepository::class);
+        $resolvers = $this->getResolvers();
 
-        /** @var Session $session */
-        $session = $this->app->make(Session::class);
-
-        /** @var string $sessionKey */
-        $sessionKey = $config->get('lingua.resolvers.session.key', 'lingua.locale');
-        /** @var string|null $sessionLocale */
-        $sessionLocale = $session->get($sessionKey);
-
-        $candidates = [];
-
-        if (is_string($sessionLocale) && $sessionLocale !== '') {
-            $candidates[] = $sessionLocale;
+        if (! $request instanceof Request) {
+            $request = $this->app->make(Request::class);
         }
 
-        if ($request instanceof Request) {
-            /** @var string $cookieKey */
-            $cookieKey = $config->get('lingua.resolvers.cookie.key', 'lingua_locale');
-            /** @var string|null $cookieLocale */
-            $cookieLocale = $request->cookie($cookieKey);
+        foreach ($resolvers as $resolver) {
+            $candidates = $resolver->resolveAll($request);
 
-            if (is_string($cookieLocale) && $cookieLocale !== '') {
-                $candidates[] = $cookieLocale;
-            }
-        }
+            foreach ($candidates as $candidate) {
+                $normalized = $this->normalizeLocale($candidate);
 
-        foreach ($candidates as $candidate) {
-            $normalized = $this->normalizeLocale($candidate);
-
-            if ($this->isLocaleSupported($normalized)) {
-                return $normalized;
+                if ($this->isLocaleSupported($normalized)) {
+                    return $normalized;
+                }
             }
         }
 
         return null;
+    }
+
+    /**
+     * Get the locale resolvers.
+     *
+     * @return array<LocaleResolverInterface>
+     *
+     * @throws BindingResolutionException
+     */
+    private function getResolvers(): array
+    {
+        if ($this->resolvers !== null) {
+            return $this->resolvers;
+        }
+
+        return [
+            $this->app->make(SessionResolver::class),
+            $this->app->make(CookieResolver::class),
+        ];
     }
 
     /**
@@ -574,8 +582,6 @@ final readonly class Lingua
 
     /**
      * Persist locale to a cookie when enabled in config.
-     *
-     * @throws BindingResolutionException
      */
     private function persistLocaleCookie(ConfigRepository $config, string $locale): void
     {

@@ -102,7 +102,7 @@ function LocaleSwitcher() {
     const { locale, locales } = useTranslations();
 
     const switchLocale = (newLocale: string) => {
-        router.post('/lingua/locale', { locale: newLocale });
+        router.post('/locale', { locale: newLocale });
     };
 
     return (
@@ -201,7 +201,88 @@ Lingua::translationGroup('auth');
 
 | Method | URI | Description |
 |--------|-----|-------------|
-| POST | `/lingua/locale` | Switch locale |
+| POST | `/locale` | Switch locale |
+
+> **Note:** The route prefix can be configured via `config('lingua.routes.prefix')`.
+
+## Translation File Formats
+
+Lingua supports both PHP and JSON translation files. Configure the driver in `config/lingua.php`:
+
+```php
+'translation_driver' => 'php', // or 'json'
+```
+
+### PHP Translations (Default)
+
+PHP translations are organized in groups (files) under `lang/{locale}/`:
+
+```
+lang/
+├── en/
+│   ├── messages.php
+│   └── validation.php
+└── fr/
+    ├── messages.php
+    └── validation.php
+```
+
+```php
+// lang/en/messages.php
+return [
+    'welcome' => 'Welcome!',
+    'greeting' => 'Hello, :name!',
+];
+```
+
+**Shared to React as:**
+
+```json
+{
+  "messages": {
+    "welcome": "Welcome!",
+    "greeting": "Hello, :name!"
+  },
+  "validation": { ... }
+}
+```
+
+Access in React: `__('messages.welcome')`
+
+### JSON Translations
+
+JSON translations use a flat key-value structure in `lang/{locale}.json`:
+
+```
+lang/
+├── en.json
+└── fr.json
+```
+
+```json
+// lang/en.json
+{
+  "Welcome!": "Welcome!",
+  "Hello, :name!": "Hello, :name!",
+  "auth.login": "Login",
+  "auth.logout": "Logout"
+}
+```
+
+**Shared to React as-is (flat structure):**
+
+```json
+{
+  "Welcome!": "Welcome!",
+  "Hello, :name!": "Hello, :name!",
+  "auth.login": "Login",
+  "auth.logout": "Logout"
+}
+```
+
+Access in React: `__('Welcome!')` or `__('auth.login')`
+
+> **Tip:** JSON translations are ideal for simple apps or when using Laravel's `__()` helper with literal string keys.
 
 ## Advanced
 
