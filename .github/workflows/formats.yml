@@ -18,10 +18,10 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231 #v6
 
     - name: Setup PHP
-      uses: shivammathur/setup-php@v2
+      uses: shivammathur/setup-php@a919ff576a94b0fd7ec15f090dd9cf16b76c2c0b #v2
       with:
         php-version: ${{ matrix.php }}
         extensions: dom, mbstring, zip
@@ -33,7 +33,7 @@ jobs:
       run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
     - name: Cache dependencies
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae #v5
       with:
         path: ${{ steps.composer-cache.outputs.dir }}
         key: dependencies-php-${{ matrix.php }}-os-${{ matrix.os }}-version-${{ matrix.dependency-version }}-composer-${{ hashFiles('composer.json') }}
